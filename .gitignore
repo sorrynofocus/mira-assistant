@@ -1,0 +1,30 @@
+# Local data, configuration, and secrets
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+config/appsettings.local.json
+config/governance.md
+config/personas/whoami.md
+.env
+.env.*
+!.env.example
+
+# .NET
+**/bin/
+**/obj/
+*.user
+
+# Frontend
+**/node_modules/
+frontend/dist/
+frontend/.astro/
+
+# Editors and operating systems
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
