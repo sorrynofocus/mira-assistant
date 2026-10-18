@@ -6,6 +6,8 @@ data/
 *.sqlite
 *.sqlite3
 config/appsettings.local.json
+**/appsettings.Local.json
+**/appsettings.local.json
 config/governance.md
 config/personas/whoami.md
 .env
@@ -16,6 +18,8 @@ config/personas/whoami.md
 **/bin/
 **/obj/
 *.user
+*.log
+logs/
 
 # Frontend
 **/node_modules/

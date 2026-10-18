@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#121a2c" />
+    <title>MIRA · Local assistant</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">STT 3.0 · M0</p>
+        <h1>MIRA</h1>
+        <p class="subtitle">Memory · Intelligence · Reasoning · Autonomy</p>
+      </header>
+
+      <section class="card" aria-labelledby="status-heading">
+        <h2 id="status-heading">Local setup</h2>
+        <p>This baseline connects an Astro page to the local MIRA API. Chat and voice arrive in later milestones.</p>
+        <p class="status" role="status" aria-live="polite">
+          <span class="indicator" aria-hidden="true"></span>
+          <span id="api-status">Checking API…</span>
+        </p>
+        <button id="retry" type="button">Check again</button>
+      </section>
+
+      <footer>Local development only · Mock model providers</footer>
+    </main>
+    <script>
+      import '../scripts/health.ts';
+    </script>
+  </body>
+</html>
+
+<style>
+  :global(*) { box-sizing: border-box; }
+  :global(body) { margin: 0; background: #121a2c; color: #f3f5fb; font-family: system-ui, sans-serif; }
+  .shell { width: min(100% - 2rem, 48rem); margin: 0 auto; padding: clamp(3rem, 10vw, 8rem) 0 2rem; }
+  .eyebrow { color: #a9b8db; font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  h1 { font-size: clamp(3.5rem, 12vw, 6rem); letter-spacing: -.06em; margin: .2rem 0 0; }
+  .subtitle { margin: 0 0 3rem; color: #c5d0e8; }
+  .card { background: #1b2841; border: 1px solid #344665; border-radius: 1rem; padding: clamp(1.5rem, 5vw, 2.25rem); box-shadow: 0 1rem 3rem #07112455; }
+  h2 { margin-top: 0; }
+  .card p { line-height: 1.6; }
+  .status { display: flex; align-items: center; gap: .65rem; font-weight: 600; }
+  .indicator { width: .8rem; height: .8rem; background: #d6a45c; border-radius: 50%; }
+  .status[data-state="online"] .indicator { background: #76d7a5; }
+  .status[data-state="offline"] .indicator { background: #f28c8c; }
+  button { background: #9bb9ff; color: #101b31; border: 0; border-radius: .55rem; padding: .7rem 1rem; font: inherit; font-weight: 700; cursor: pointer; }
+  button:hover { background: #bfd1ff; }
+  button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  footer { margin-top: 2rem; color: #a9b8db; font-size: .85rem; }
+</style>
