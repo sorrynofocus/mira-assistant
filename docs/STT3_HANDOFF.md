@@ -3,7 +3,7 @@
 > **Status:** Initial implementation handoff  
 > **Target:** Windows 11 development, browser UI usable across Windows/Linux/macOS  
 > **Primary implementation:** Astro + vanilla TypeScript frontend; ASP.NET Core (.NET 10) C# backend  
-> **Collaboration:** Codex implements; Claude reviews through `REVIEW.md`; both read `AGENTS.md`  
+> **Collaboration:** Codex and Claude alternate Implementer/Reviewer roles as assigned by the owner (see `REVIEW.md` status header); both read `AGENTS.md`  
 > **Scope boundary:** Initial local-first pilot, not a hosted multi-tenant SaaS product
 
 ## 1. Executive summary
@@ -519,16 +519,18 @@ The project uses **two complementary AI development agents**. `AGENTS.md` is the
 **Workflow:**
 
 1. Before modifications, read `AGENTS.md`, this handoff, and the latest entries in `REVIEW.md`.
-2. Codex selects one milestone or bounded task; records intent and known risks in `REVIEW.md`.
-3. Codex implements and runs relevant tests. Document commands, results, files changed, decisions, and unresolved issues.
-4. Claude reviews actual code/diffs and test evidence, not just Codex's summary. Record findings with severity and file/line references; no unsupported assertions.
-5. Codex addresses review findings, reruns tests, and adds a resolution entry. Claude can verify if needed.
+2. The Implementer selects one milestone or bounded task; records intent and known risks in `REVIEW.md`.
+3. The Implementer implements and runs relevant tests. Document commands, results, files changed, decisions, and unresolved issues.
+4. The Reviewer reviews actual code/diffs and test evidence, not just the Implementer's summary. Record findings with severity and file/line references; no unsupported assertions.
+5. The Implementer addresses review findings, reruns tests, and adds a resolution entry. The Reviewer verifies.
 6. Handoffs include current branch/commit, build state, blocker, **next concrete action**, and any decision needing user approval.
 7. Do not silently modify persona, memory, authentication policy, or model selection architecture without updating the plan/decision record and obtaining user approval when material.
 
+Roles (Implementer, Reviewer) are assigned by the owner and may swap between Codex and Claude; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing).
+
 **MIRA governance check:** Both agents must treat `governance.md` as admin-controlled policy input, never as sufficient enforcement. Any agent tools require `GovernanceService` approval and auditable grants. No self-grant, self-modification, or bypasses.
 
-**Suggested initial Codex task:** Implement **M0 only**, then M1 with a fake streaming model and test accounts. Do not connect paid APIs or microphone/TTS until local streaming and authentication have been demonstrated.
+**Initial milestone order (historical):** M0 first, then M1 with a fake streaming model and test accounts, before any paid API or microphone/TTS work. Local streaming and authentication must be demonstrated before those are connected. The current Implementer is whoever the **Roles** line names.
 
 ## 13. Open decisions / checkpoints
 

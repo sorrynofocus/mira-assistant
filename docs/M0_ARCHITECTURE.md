@@ -1,6 +1,6 @@
 # M0 architecture and local development boundaries
 
-> **Status:** Implemented M0 baseline, under review. The approved product design and later milestones remain in [STT3_HANDOFF.md](STT3_HANDOFF.md).
+> **Status:** Implemented and reviewed M0 baseline (commit `9b4bbce`). The approved product design and later milestones remain in [STT3_HANDOFF.md](STT3_HANDOFF.md).
 
 M0 provides a local shell for MIRA (Memory, Intelligence, Reasoning & Autonomy). The Astro page displays API availability; the ASP.NET Core Minimal API exposes only `GET /health/live`, which returns `{"status":"ok"}`. The projects build and test without provider credentials, model calls, or private user data.
 

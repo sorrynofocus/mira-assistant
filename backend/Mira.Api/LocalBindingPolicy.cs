@@ -14,19 +14,19 @@ public static class LocalBindingPolicy
 
         if (configuration.GetSection("Kestrel:Endpoints").Exists())
         {
-            throw new InvalidOperationException("Kestrel endpoint configuration is unavailable in local M0 mode.");
+            throw new InvalidOperationException("Kestrel endpoint configuration is unavailable in local-only mode.");
         }
 
         var urls = configuration["urls"];
         if (!string.IsNullOrWhiteSpace(urls) && !string.Equals(urls, Url, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"M0 API binding must be {Url}.");
+            throw new InvalidOperationException($"The API binding must be {Url}.");
         }
 
         if (!string.IsNullOrWhiteSpace(configuration["HTTP_PORTS"]) ||
             !string.IsNullOrWhiteSpace(configuration["HTTPS_PORTS"]))
         {
-            throw new InvalidOperationException("HTTP_PORTS and HTTPS_PORTS are unavailable in local M0 mode.");
+            throw new InvalidOperationException("HTTP_PORTS and HTTPS_PORTS are unavailable in local-only mode.");
         }
     }
 

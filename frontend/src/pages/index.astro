@@ -7,47 +7,114 @@
     <title>MIRA · Local assistant</title>
   </head>
   <body>
-    <main class="shell">
-      <header>
-        <p class="eyebrow">STT 3.0 · M0</p>
-        <h1>MIRA</h1>
-        <p class="subtitle">Memory · Intelligence · Reasoning · Autonomy</p>
-      </header>
-
-      <section class="card" aria-labelledby="status-heading">
-        <h2 id="status-heading">Local setup</h2>
-        <p>This baseline connects an Astro page to the local MIRA API. Chat and voice arrive in later milestones.</p>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <h1>MIRA</h1>
+          <p class="subtitle">Memory · Intelligence · Reasoning · Autonomy</p>
+        </div>
         <p class="status" role="status" aria-live="polite">
           <span class="indicator" aria-hidden="true"></span>
           <span id="api-status">Checking API…</span>
+          <button id="retry" class="link-button" type="button">Check again</button>
         </p>
-        <button id="retry" type="button">Check again</button>
-      </section>
+      </header>
 
-      <footer>Local development only · Mock model providers</footer>
-    </main>
+      <main>
+        <section id="login-view" class="card login" aria-labelledby="login-heading" hidden>
+          <h2 id="login-heading">Sign in</h2>
+          <form id="login-form" novalidate>
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <p id="login-error" class="error" role="alert" hidden></p>
+            <button id="login-button" type="submit">Sign in</button>
+          </form>
+          <p class="hint">No account yet? Create one from a terminal with <code>scripts\create-user.cmd &lt;name&gt;</code>.</p>
+        </section>
+
+        <section id="chat-view" class="chat" aria-label="Conversation" hidden>
+          <div class="chat__bar">
+            <p>Signed in as <strong id="whoami"></strong></p>
+            <button id="logout-button" class="link-button" type="button">Sign out</button>
+          </div>
+
+          <ol id="messages" class="messages" role="log" aria-label="Messages"></ol>
+          <p id="empty-state" class="empty">Send a message to start. Responses come from a mock model in this milestone.</p>
+
+          <form id="composer" class="composer">
+            <label for="message" class="visually-hidden">Message</label>
+            <textarea id="message" name="message" rows="2" placeholder="Message MIRA (Enter to send, Shift+Enter for a new line)"></textarea>
+            <div class="composer__actions">
+              <button id="stop-button" class="secondary" type="button" hidden>Stop</button>
+              <button id="send-button" type="submit">Send</button>
+            </div>
+          </form>
+          <p id="chat-error" class="error" role="alert" hidden></p>
+        </section>
+      </main>
+
+      <p id="announcer" class="visually-hidden" role="status" aria-live="polite"></p>
+      <footer>Local development only · Mock model provider</footer>
+    </div>
     <script>
       import '../scripts/health.ts';
+      import '../scripts/chat.ts';
     </script>
   </body>
 </html>
 
-<style>
-  :global(*) { box-sizing: border-box; }
-  :global(body) { margin: 0; background: #121a2c; color: #f3f5fb; font-family: system-ui, sans-serif; }
-  .shell { width: min(100% - 2rem, 48rem); margin: 0 auto; padding: clamp(3rem, 10vw, 8rem) 0 2rem; }
-  .eyebrow { color: #a9b8db; font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
-  h1 { font-size: clamp(3.5rem, 12vw, 6rem); letter-spacing: -.06em; margin: .2rem 0 0; }
-  .subtitle { margin: 0 0 3rem; color: #c5d0e8; }
-  .card { background: #1b2841; border: 1px solid #344665; border-radius: 1rem; padding: clamp(1.5rem, 5vw, 2.25rem); box-shadow: 0 1rem 3rem #07112455; }
-  h2 { margin-top: 0; }
-  .card p { line-height: 1.6; }
-  .status { display: flex; align-items: center; gap: .65rem; font-weight: 600; }
-  .indicator { width: .8rem; height: .8rem; background: #d6a45c; border-radius: 50%; }
+<style is:global>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #121a2c; color: #f3f5fb; font-family: system-ui, sans-serif; }
+  [hidden] { display: none !important; }
+  .shell { width: min(100% - 2rem, 52rem); margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 1.5rem 0; gap: 1.25rem; }
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+  h1 { font-size: 2.25rem; letter-spacing: -.04em; margin: 0; }
+  .subtitle { margin: 0; color: #c5d0e8; font-size: .9rem; }
+  main { flex: 1; display: flex; flex-direction: column; }
+  .card { background: #1b2841; border: 1px solid #344665; border-radius: 1rem; padding: clamp(1.25rem, 5vw, 2rem); }
+  .login { max-width: 26rem; width: 100%; margin: 2rem auto 0; }
+  .login h2 { margin-top: 0; }
+  form label { display: block; font-weight: 600; margin: .9rem 0 .35rem; }
+  input, textarea { width: 100%; font: inherit; color: inherit; background: #0f1626; border: 1px solid #4a5f86; border-radius: .55rem; padding: .65rem .75rem; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  button { background: #9bb9ff; color: #101b31; border: 0; border-radius: .55rem; padding: .65rem 1.1rem; font: inherit; font-weight: 700; cursor: pointer; }
+  button:hover:not(:disabled) { background: #bfd1ff; }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  button.secondary { background: transparent; color: #f3f5fb; border: 1px solid #9bb9ff; }
+  .link-button { background: none; color: #bfd1ff; padding: .2rem .35rem; font-weight: 600; text-decoration: underline; }
+  .link-button:hover:not(:disabled) { background: none; color: #fff; }
+  #login-button { margin-top: 1.25rem; width: 100%; }
+  .hint { color: #a9b8db; font-size: .85rem; line-height: 1.5; }
+  code { background: #0f1626; padding: .1rem .3rem; border-radius: .3rem; }
+  .error { color: #ffb3b3; background: #3a1f2a; border: 1px solid #7a3a4a; border-radius: .5rem; padding: .55rem .75rem; margin: .9rem 0 0; }
+  .status { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: .9rem; font-weight: 600; }
+  .indicator { width: .7rem; height: .7rem; background: #d6a45c; border-radius: 50%; }
   .status[data-state="online"] .indicator { background: #76d7a5; }
   .status[data-state="offline"] .indicator { background: #f28c8c; }
-  button { background: #9bb9ff; color: #101b31; border: 0; border-radius: .55rem; padding: .7rem 1rem; font: inherit; font-weight: 700; cursor: pointer; }
-  button:hover { background: #bfd1ff; }
-  button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-  footer { margin-top: 2rem; color: #a9b8db; font-size: .85rem; }
+  .chat { flex: 1; display: flex; flex-direction: column; gap: .75rem; min-height: 0; }
+  .chat__bar { display: flex; align-items: center; justify-content: space-between; color: #c5d0e8; }
+  .chat__bar p { margin: 0; }
+  .messages { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 16rem; max-height: calc(100dvh - 22rem); overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; }
+  .message { max-width: 85%; padding: .7rem .9rem; border-radius: .9rem; line-height: 1.55; }
+  .message--user { align-self: flex-end; background: #2c4d86; }
+  .message--assistant { align-self: flex-start; background: #1b2841; border: 1px solid #344665; }
+  .message__author { display: block; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #a9b8db; margin-bottom: .2rem; }
+  .message__body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .message__status { display: inline-block; margin-top: .35rem; font-size: .75rem; font-weight: 700; color: #d6a45c; }
+  .message[data-status="failed"] .message__status { color: #f28c8c; }
+  .message[data-status="streaming"] .message__body:empty::after { content: "…"; color: #a9b8db; }
+  .empty { color: #a9b8db; text-align: center; margin: 2rem 0; }
+  .composer { display: flex; gap: .6rem; align-items: flex-end; }
+  .composer textarea { resize: vertical; min-height: 3rem; max-height: 14rem; }
+  .composer__actions { display: flex; gap: .5rem; }
+  footer { color: #a9b8db; font-size: .8rem; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  @media (max-width: 36rem) {
+    .composer { flex-direction: column; align-items: stretch; }
+    .composer__actions { justify-content: flex-end; }
+    .message { max-width: 100%; }
+  }
 </style>

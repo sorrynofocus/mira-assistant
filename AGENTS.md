@@ -8,9 +8,10 @@
 5. Relevant implementation and tests before editing.
 
 ## Responsibilities
-- **Codex:** primary implementer; plan one bounded unit of work, make code changes, run tests, record evidence.
-- **Claude:** reviewer; inspect changed files and diffs, question assumptions, check architecture/security/tests, report actionable findings.
-- Either agent may make implementation changes if explicitly instructed, but document ownership and handoff.
+Roles are assigned by the owner and may change over time. The current assignment is the **Roles** line in the `REVIEW.md` status header; each change is logged as a `ROLE CHANGE` entry. Check it at the start of every session rather than assuming.
+- **Implementer:** plan one bounded unit of work, record intent in `REVIEW.md`, make code changes, run tests, record evidence.
+- **Reviewer:** inspect changed files and diffs, question assumptions, check architecture/security/tests, report actionable findings.
+- An agent never reviews its own change. The Reviewer may make implementation changes if explicitly instructed by the owner, but documents ownership and handoff, and that change then goes to the other agent for review.
 - Each Codex and Claude should run sub-agents to update documents but check if the file is locked or being written to. Do not overstep. Sub agents should handle the mundane tasks like archectecture, readme, and learning documents.
 
 ## Working agreement

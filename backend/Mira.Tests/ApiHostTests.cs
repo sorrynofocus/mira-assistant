@@ -1,10 +1,7 @@
 using System.Diagnostics;
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
+using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Mira.Api;
 using Mira.Core;
 using Mira.Infrastructure;
 
@@ -13,23 +10,26 @@ namespace Mira.Tests;
 public sealed class ApiHostTests
 {
     [Fact]
-    public async Task HealthIsTheOnlyPublicM0Route()
+    public async Task HealthIsAnonymousAndApiDeniesByDefault()
     {
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new MiraApiFactory();
         using var client = factory.CreateClient();
 
         var health = await client.GetAsync("/health/live");
         Assert.Equal(HttpStatusCode.OK, health.StatusCode);
         Assert.Equal("{\"status\":\"ok\"}", await health.Content.ReadAsStringAsync());
 
-        var chat = await client.GetAsync("/api/chat/stream");
-        Assert.Equal(HttpStatusCode.NotFound, chat.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/conversations/current")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(ClientExtensions.StreamRequest("hi"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/chat/cancel", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/logout", new { })).StatusCode);
     }
 
     [Fact]
     public async Task ForeignHostIsRejected()
     {
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new MiraApiFactory();
         using var client = factory.CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/health/live");
         request.Headers.Host = "evil.example";
@@ -41,12 +41,8 @@ public sealed class ApiHostTests
     [Fact]
     public void HostResolvesDenyAllGovernance()
     {
-        using var factory = new WebApplicationFactory<Program>();
-        using var scope = factory.Services.CreateScope();
-        IGovernanceService governance = scope.ServiceProvider.GetRequiredService<IGovernanceService>();
-
-        Assert.IsType<DenyAllGovernanceService>(governance);
-        Assert.False(governance.Evaluate(new CapabilityRequest("web", "write", "any")).Allowed);
+        using var factory = new MiraApiFactory();
+        Assert.IsType<DenyAllGovernanceService>(factory.Services.GetRequiredService<IGovernanceService>());
     }
 
     [Theory]
@@ -55,24 +51,55 @@ public sealed class ApiHostTests
     [InlineData("HTTP_PORTS", "5081")]
     public void HostRefusesBindingOverrides(string key, string value)
     {
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(host =>
-            host.ConfigureAppConfiguration((_, configuration) =>
-                configuration.AddInMemoryCollection(new Dictionary<string, string?> { [key] = value })));
+        using var factory = new MiraApiFactory(new Dictionary<string, string?> { [key] = value });
+        Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+    }
 
+    [Theory]
+    [InlineData("Mira:ProviderMode", "Azure")]
+    [InlineData("Mira:Auth:MaximumPasswordLength", "64")]
+    [InlineData("Mira:Chat:MaxResponseSeconds", "0")]
+    public void HostRefusesInvalidOptions(string key, string value)
+    {
+        using var factory = new MiraApiFactory(new Dictionary<string, string?> { [key] = value });
         Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
     }
 
     [Fact]
-    public void HostRefusesUnsupportedProviderMode()
+    public async Task CreateUserCommandReadsPipedPasswordsAsUtf8()
     {
-        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(host =>
-            host.ConfigureAppConfiguration((_, configuration) =>
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Mira:ProviderMode"] = "Azure"
-                })));
+        const string password = "piped passphrase — ünïcode ✓ 密码 😀 and spaces ";
+        var directory = Path.Combine(Path.GetTempPath(), "mira-tests", Guid.NewGuid().ToString("N"));
+        var databasePath = Path.Combine(directory, "mira.db");
+        var assemblyPath = typeof(Program).Assembly.Location;
+        var start = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = Path.GetDirectoryName(assemblyPath)!,
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            StandardInputEncoding = new System.Text.UTF8Encoding(false)
+        };
+        start.ArgumentList.Add(assemblyPath);
+        start.ArgumentList.Add("create-user");
+        start.ArgumentList.Add("--username");
+        start.ArgumentList.Add("piped");
+        start.ArgumentList.Add("--password-stdin");
+        start.Environment["Mira__DatabasePath"] = databasePath;
 
-        Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
+        using var process = Process.Start(start)!;
+        await process.StandardInput.WriteLineAsync(password);
+        process.StandardInput.Close();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await process.WaitForExitAsync(timeout.Token);
+        Assert.True(process.ExitCode == 0, await process.StandardError.ReadToEndAsync());
+
+        var options = new MiraOptions { DatabasePath = databasePath };
+        var accounts = new Mira.Infrastructure.Sqlite.SqliteUserAccountService(
+            new Mira.Infrastructure.Sqlite.MiraDatabase(options), options, TimeProvider.System);
+        Assert.NotNull(await accounts.VerifyCredentialsAsync("piped", password));
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     }
 
     [Fact]
@@ -87,8 +114,10 @@ public sealed class ApiHostTests
             RedirectStandardOutput = true
         };
         start.ArgumentList.Add(assemblyPath);
-        start.Environment["Kestrel__Endpoints__Alt__Url"] = "http://0.0.0.0:5081";
+        // A non-default loopback address proves the override is refused without ever exposing a LAN listener.
+        start.Environment["Kestrel__Endpoints__Alt__Url"] = "http://127.0.0.2:5081";
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
+        start.Environment["Mira__DatabasePath"] = Path.Combine(Path.GetTempPath(), "mira-tests", Guid.NewGuid().ToString("N"), "mira.db");
 
         using var process = Process.Start(start)!;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));

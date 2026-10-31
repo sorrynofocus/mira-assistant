@@ -2,7 +2,9 @@ namespace Mira.Core;
 
 public interface IChatProvider
 {
-    IAsyncEnumerable<string> StreamAsync(string prompt, CancellationToken cancellationToken = default);
+    string ModelId { get; }
+
+    IAsyncEnumerable<string> StreamAsync(ChatRequest request, CancellationToken cancellationToken = default);
 }
 
 public interface ITranscriptionProvider

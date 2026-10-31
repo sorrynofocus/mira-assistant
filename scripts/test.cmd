@@ -14,6 +14,9 @@ if not exist "node_modules" (
   if errorlevel 1 exit /b 1
 )
 
+call npm test
+if errorlevel 1 exit /b 1
+
 call npm run check
 if errorlevel 1 exit /b 1
 
@@ -21,5 +24,5 @@ call npm run build
 if errorlevel 1 exit /b 1
 popd
 
-echo M0 checks passed.
+echo All checks passed.
 exit /b 0
