@@ -1,14 +1,14 @@
-# REVIEW.md: STT 3.0 Codex / Claude Shared Handoff Log
+# REVIEW.md: STT 3.0 Shared Agent Handoff Log
 
 > Append entries chronologically. Do not erase earlier findings or change their status without a new resolution entry. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M1 complete and reviewed (Codex verified the resolutions, 2026-10-17); owner accepted ADR 0001 for M1 and approved Astro 7.4; local M1 commit authorized on 2026-10-31
-- **Working branch/commit:** `main`; M1 is committed locally on top of `9b4bbce` (see `git log`); not pushed
-- **Last verified build:** 2026-10-31, `scripts\test.cmd` (see the 2026-10-31 Claude DECISION entry)
-- **Open blockers:** None
-- **Roles:** Implementer = Claude; Reviewer = Codex (since 2026-10-17; owner may swap; see latest ROLE CHANGE entry)
-- **Next concrete action:** Start of M2: decide the data layer (EF Core or plain SQLite) per ADR 0001's Revisit, then record the M2 intent. Keep GitHub publication on hold until the owner authorizes it.
+- **Milestone:** M1 complete, reviewed and committed locally (`89a312a`); M2 not started
+- **Working branch/commit:** `main`; not pushed
+- **Last verified build:** 2026-10-31, `scripts\test.cmd` passed at `89a312a` (62/62 xUnit, 12/12 Vitest, Astro check and build); later commits are documentation and process only
+- **Open blockers:** M2 cannot start until the owner chooses the data layer (EF Core or plain SQLite) per ADR 0001's Revisit
+- **Roles:** Implementer = Grok; Reviewer = Codex (also occasional documentation updates); Claude = no standing role, available on owner request (since 2026-10-31; owner may change roles; see latest ROLE CHANGE entry)
+- **Next concrete action:** The owner chooses the M2 data layer. Grok then records its M2 intent, implements, and hands off to Codex for review. Keep GitHub publication on hold.
 
 ---
 
@@ -548,3 +548,48 @@ cmd /c scripts\test.cmd (2026-10-31)   PASS: build 0 warn/0 err; xUnit 62/62; Vi
 Documentation-only edits followed; no code changed after this run.
 
 **Next exact action:** Start of M2. The owner decides on EF Core or plain SQLite per ADR 0001's Revisit; Codex's advice leans EF Core for routine CRUD. Then Claude records the M2 intent. Codex may review the README section and the ADR status edit at its next session. Nothing goes to GitHub without the owner's authorization.
+
+---
+
+## 2026-10-31 15:05 MST | Codex | REVIEW
+
+**Objective:** Review the documentation-only additions made after M1 verification and included in local commit `89a312a`, against Claude's 2026-10-31 DECISION + COMMIT entry. Codex remains Reviewer per the Roles header.
+
+**Branch and commit:** `main` at `89a312a` (`feat: add M1 local authentication and streamed mock chat`), parent `9b4bbce`; no push.
+
+**Files examined or changed:** Used `git show 89a312a -- README.MD docs/` and examined the committed README, ADR 0001, M0/M1 architecture status lines, STT 3.0 handoff, Claude's decision entry, and the local original STT README for historical claims. Changed only `REVIEW.md` by appending this entry.
+
+**Findings:** **No Blocker, Major, or Minor finding in the three requested documentation changes.** ADR 0001 records the owner's M1-only acceptance and requires a data-layer decision before M2 conversation persistence, with a baseline for existing tables, fresh/populated database tests, and backup/restore if EF Core is chosen. The README's STT history (.NET 9, Azure Speech/OpenAI/Search, gated local commands, cloud-first wording, simple local configuration, single-line persona) is supported by the original STT README; its future MIRA features are presented as goals, while M1 is described as mock-only and local. The README project status and M0/M1 architecture status lines agree with the reviewed milestones and commit history. `docs/M0_ARCHITECTURE.md` describes the historical M0 snapshot, so its M0-only endpoint language is appropriate in that context.
+
+**Commands and evidence:**
+```text
+git show 89a312a -- README.MD docs/       REVIEWED: commit documentation and ADR
+git show --check --oneline 89a312a        WARN: two-space Markdown hard line break on docs/STT3_HANDOFF.md:6 (previous role-doc edit; no substantive issue in the requested changes)
+git diff --check -- README.MD              PASS: separate unstaged README wording edit has no whitespace error
+```
+No build or tests rerun for this documentation review. Claude's DECISION + COMMIT entry reports `scripts\test.cmd` passed on 2026-10-31 (62/62 xUnit, 12/12 Vitest, Astro check/build) before the documentation-only edits.
+
+**Working-tree boundary:** Besides this new review entry, `.gitignore` retains the owner's unstaged whitespace edit. `README.MD` has a separate unstaged one-word change (`the owner's first` to `the first`) after commit `89a312a`; it was not part of the committed documentation reviewed here. I left both untouched.
+
+**Security/privacy and next exact action:** These documentation changes grant no runtime authority and disclose no credentials or private conversation data. The owner decides the M2 data layer at the ADR checkpoint; Claude then records M2 intent under the current roles. Do not push without owner authorization.
+
+---
+
+## 2026-10-31 | Claude | ROLE CHANGE
+
+**Objective:** Record the owner's role reassignment and make the shared rules cover more than two agents.
+
+**Owner decision (2026-10-31):** Grok joins as **Implementer**. Codex stays **Reviewer**, possibly with documentation updates. Claude steps out of the Implementer seat and has no standing role; the owner may call on Claude when needed. All previous rules still hold, in particular: an agent never reviews its own change.
+
+**Files changed:**
+- `AGENTS.md`: the sub-agent rule now names all current agents. Added a rule to re-read the end of `REVIEW.md` immediately before appending, because three agents raise the chance of simultaneous appends.
+- `docs/STT3_HANDOFF.md` §12: describes "multiple" agents and records Grok as Implementer from M2.
+- `REVIEW.md`: title made agent-neutral; status header updated (Roles, blocker, next action); this entry.
+
+**Handoff for Grok (new Implementer):**
+- State: M0 and M1 are committed locally (`9b4bbce`, `89a312a`), and nothing is pushed.
+- Required reading is listed in `AGENTS.md`.
+- Before any M2 code, wait for the owner's data-layer choice. Then record M2 intent in this log.
+- Keep parallel helper sessions to files the Implementer isn't editing.
+
+**Next exact action:** The owner chooses the M2 data layer. Grok then records the M2 intent. Nothing goes to GitHub without the owner's authorization.

@@ -514,7 +514,7 @@ Production/user-specific `whoami.md`, secrets, logs containing private text, aud
 
 ## 12. Operating instructions for Codex and Claude
 
-The project uses **two complementary AI development agents**. `AGENTS.md` is the shared ruleset; `REVIEW.md` is their append-only coordination journal. Neither tool should assume it can message the other directly.
+The project uses **multiple complementary AI development agents** (currently Codex, Claude and Grok). `AGENTS.md` is the shared ruleset; `REVIEW.md` is their append-only coordination journal. Neither tool should assume it can message the other directly.
 
 **Workflow:**
 
@@ -526,7 +526,7 @@ The project uses **two complementary AI development agents**. `AGENTS.md` is the
 6. Handoffs include current branch/commit, build state, blocker, **next concrete action**, and any decision needing user approval.
 7. Do not silently modify persona, memory, authentication policy, or model selection architecture without updating the plan/decision record and obtaining user approval when material.
 
-Roles (Implementer, Reviewer) are assigned by the owner and may swap between Codex and Claude; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing).
+Roles (Implementer, Reviewer) are assigned by the owner and may move between agents; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing); Grok is Implementer from M2 (Codex reviewing).
 
 **MIRA governance check:** Both agents must treat `governance.md` as admin-controlled policy input, never as sufficient enforcement. Any agent tools require `GovernanceService` approval and auditable grants. No self-grant, self-modification, or bypasses.
 
