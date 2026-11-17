@@ -13,7 +13,7 @@ This project uses the **Agent Sync Protocol** (`docs/agent-sync/AGENT_SYNC.md`).
 
 ## Project-specific working rules
 - Current agents: Codex, Claude and Grok. Each may run sub-agents for routine documents (architecture notes, README, learning docs) after checking the file isn't being written by someone else.
-- Grok may work as a team of Grok bots. The bots coordinate among themselves automatically, so the team skips the protocol's turn mechanics internally (see "Self-coordinating agent teams" in the protocol). Because Codex and Claude share this repository, the team still holds the Turn line while it works, appends one summary entry when it finishes or needs a decision, and has its work reviewed by the Reviewer (currently Codex). Every bot follows the rules in this file.
+- Grok may work as a team of Grok bots. The bots coordinate among themselves automatically, so the team skips the protocol's turn mechanics internally (see "Self-coordinating agent teams" in the protocol). Because Codex and Claude share this repository, the team still holds the Turn line while it works, appends one summary entry when it finishes or needs a decision, and has its work reviewed by the Reviewer (currently a separate Grok bot outside the Implementer team; see the Roles line). Every bot follows the rules in this file.
 - Seek owner approval for material architectural changes, security compromises, persistent persona edits, new paid services, and any push to GitHub. These extend the protocol's Owner authorization list: the approval must reach the acting agent directly from the owner, and a `REVIEW.md` entry only records it.
 - Never paste real secrets or private user messages in `REVIEW.md`, issue logs, or commits.
 

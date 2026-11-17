@@ -1,6 +1,6 @@
 # ADR 0001: SQLite access without EF Core for M1
 
-- **Status:** Accepted for M1 only (owner, 2026-10-17; Reviewer Codex recommended acceptance for M1). Proposed by Claude as Implementer, 2026-10-17. The data layer is reopened at the start of M2; see Revisit.
+- **Status:** Accepted for M1 only (owner, 2026-10-17; Reviewer Codex recommended acceptance for M1). Proposed by Claude as Implementer, 2026-10-17. The data layer is reopened at the start of M2; see Revisit. **M2 Revisit resolved 2026-11-16: plain SQLite continues for M2; see [ADR 0002](0002-plain-sqlite-for-m2.md).**
 - **Milestone:** M1
 
 ## Context

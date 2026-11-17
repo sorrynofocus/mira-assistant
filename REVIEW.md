@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M1 complete, reviewed and committed (`89a312a`); Agent Sync Protocol and dependency security fix committed 2026-11-16; M2 not started
-- **Working branch/commit:** `main`; pushed to `origin` (GitHub) on 2026-11-16 at the owner's direction (see the 21:36 DECISION entry); later pushes need fresh owner approval
-- **Last verified build:** 2026-11-16, `scripts\test.cmd` passed with the dependency security fix (Claude 20:36, Codex 21:21 rerun) (62/62 xUnit, 12/12 Vitest, Astro 7.4.12 check and build; requires Node >=22.23.4)
-- **Open blockers:** M2 cannot start until the owner chooses the data layer (EF Core or plain SQLite) per ADR 0001's Revisit. Also open: the M0-M1 archive cut-off and acting agent, confirmation of the Grok-team interpretation, and whether Codex stays Reviewer for the Grok team
-- **Roles:** Implementer = Grok (team of Grok bots; see "Self-coordinating agent teams" in the protocol); Reviewer = Codex (also occasional documentation updates); Claude = no standing role, available on owner request (since 2026-11-16; see the 21:36 DECISION + ROLE CHANGE entry)
-- **Next concrete action:** The Grok team gets the owner's M2 data-layer decision directly, then records the M2 INTENT. Do not archive M0-M1 until the owner approves the cut-off and names the agent.
-- **Turn:** Grok (team, Implementer), get the owner's M2 data-layer decision directly, then record the M2 INTENT
+- **Milestone:** M0-M1 closed and archived to `docs/review-archive/M0-M1.md` (archive staged 2026-11-16, not yet committed); M2 (conversation persistence and inspector) planned, implementation starting; data layer = plain SQLite (ADR 0002)
+- **Working branch/commit:** `main` at `fba5480` (= `origin/main`); archive, ADR 0002 and M2 INTENT staged, uncommitted, awaiting the owner's commit approval; no push authorized
+- **Last verified build:** 2026-11-16 21:47 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), the `scripts\test.cmd` steps run directly: build 0 warnings/0 errors, 62/62 xUnit, 12/12 Vitest, Astro check 0/0/0, build 1 page. Windows: `scripts\test.cmd` passed 2026-11-16 (Claude 20:36, Codex 21:21). Requires Node >=22.23.4
+- **Open blockers:** none for M2 start (owner answered the M2 scope questions at 21:52 MST). Pending: owner approval of the staged documentation commit (owner said not yet); a different agent's archive VERIFICATION (protocol step 5)
+- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss); Reviewer = Grok Reviewer (a separate Grok bot outside the Implementer team); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
+- **Next concrete action:** Grok team implements M2 per the 2026-11-16 21:55 INTENT; the Grok Reviewer verifies the M0-M1 archive
+- **Turn:** Grok team (Implementer), M2 persistence and inspector per the 2026-11-16 21:55 INTENT (Grok Reviewer side job: verify the M0-M1 archive)
 
 ---
 
@@ -39,542 +39,6 @@ result (PASS/FAIL; relevant details)
 **Decisions needed from the owner:**
 
 **Next turn:** <Agent> (<role>), <exact next action>
-
----
-
-## Initial handoff | ARCHITECTURE
-
-- The user approved Astro + vanilla TypeScript, ASP.NET Core/C#, SQLite local-first memory, `whoami.md` personas, three model roles (STT/chat/TTS), optional Tavily, server-side credentials, modular local login, and Codex/Claude file-based collaboration.
-- Implement text streaming and authentication first. Speech, persona, memory, and search follow milestones in the handoff.
-- Authentication must accept complex passwords of **at least 35 characters**, with standard secure hashing and safe cookies; no password-strength meter or breach check is requested.
-- Persona and memory updates must remain user-inspectable and under user control.
-- **Codex:** begin with M0, provide tests and reviewable evidence. **Claude:** review diffs, tests, and security posture independently.
-
----
-
-## 2026-10-16 | ARCHITECTURE UPDATE | MIRA identity and governed autonomy
-
-- Product identity proposed: **MIRA = Memory, Intelligence, Reasoning & Autonomy**; inspired by the user's autonomous AI character in *Invisible War*. Internal project designation STT 3.0 remains usable.
-- Added distinct responsibilities for `whoami.md`, administrator-controlled `governance.md`, user memories, and scoped permission grants.
-- An LLM may propose persona changes, memories, actions, and policy revisions, but must never self-grant authority or directly apply governance revisions.
-- All future agent tools are default-deny and subject to server-side scope checks, user approvals, revocation, and audit. No browser automation or state-changing tool is authorized for the first implementation phase.
-- **Codex next:** keep M0 bounded; add a governance template and enforceable service boundary without building autonomous tools. **Claude next:** verify no policy bypass or implicit tool authorization.
-- **Status:** design updated only; no source code or runtime checks performed.
-
----
-
-## 2026-10-16 22:32 MST | Codex | IMPLEMENTATION INTENT
-
-**Objective:** Establish the first `main` commit and implement M0 only: repository safety baseline, local Astro/.NET structure, mock provider boundary, health check, CMD scripts, and tests.
-
-**Branch and commit:** Unborn `main`; `origin` is the GitHub repository. No commit yet.
-
-**Files examined or changed:** `AGENTS.md`, `docs/STT3_HANDOFF.md`, `REVIEW.md`, `README.MD`, `config/governance.example.md`; implementation files pending.
-
-**Known risks:** The repository directory ownership triggers Git's safe-directory check for some commands. Astro dependencies require package installation. The frontend and API are not yet implemented.
-
-**Security/privacy concerns:** Review tracked paths before the first commit; keep private data, credentials, and local governance/persona files ignored.
-
-**Handoff / next exact action:** Codex creates the baseline commit, implements and verifies M0, then hands the diff and test evidence to Claude for independent review. A documentation sub-agent owns only `docs/M0_ARCHITECTURE.md`.
-
----
-
-## 2026-10-16 22:46 MST | Codex | IMPLEMENTATION HANDOFF
-
-**Objective:** Complete the M0 local scaffold and hand it to Claude for independent review. Do not begin M1.
-
-**Branch and commit:** `main`; local planning baseline `ea200bb` (`docs: establish MIRA planning baseline`). M0 changes remain uncommitted. No GitHub push was completed; the owner asked to keep the work local.
-
-**Files examined or changed:** `.gitignore`, `README.MD`, `CLAUDE.md`, `docs/M0_ARCHITECTURE.md`, `backend/MIRA.sln` and its four projects, `frontend/`, `scripts/dev.cmd`, `scripts/test.cmd`, and this append-only log. The documentation sub-agent owned only `docs/M0_ARCHITECTURE.md`; Codex reviewed it.
-
-**Changes / findings:**
-- Added a loopback-bound .NET 10 Minimal API with `/health/live`, validated mock-only configuration, independent chat/transcription/speech provider contracts, deterministic mocks, and a default-deny `IGovernanceService` implementation. No model or action endpoint is exposed.
-- Added a static Astro/vanilla TypeScript page with an accessible API status indicator. The development server proxies `/health` to the local API. Added CMD development/test scripts and local setup instructions.
-- Renamed `CLAUDE.MD` on disk to `CLAUDE.md` and aligned its include directive casing. Reconciled the README acronym with the approved MIRA expansion.
-
-**Commands run and results:**
-```text
-dotnet --version                                      PASS: 10.0.402
-node --version                                        PASS: v22.23.0
-dotnet build backend/MIRA.sln --no-restore -m:1       PASS: 0 warnings, 0 errors
-dotnet test backend/MIRA.sln --no-restore -m:1        PASS: 4/4
-cmd /c scripts\test.cmd                              PASS: 4/4 tests; Astro check 0 diagnostics; static build 1 page
-GET http://127.0.0.1:4321/                       PASS: HTTP 200
-GET http://127.0.0.1:4321/health/live            PASS: {"status":"ok"} via dev proxy
-npm audit --json                                      PASS: 0 reported vulnerabilities after install
-git check-ignore (private config, DB, build output)  PASS: all checked paths ignored
-```
-The first sandboxed .NET restore stalled and the sandboxed Astro build hit an entrypoint resolution restriction. Both checks passed with the required access. Orphaned MSBuild workers from the stalled run were stopped. Local development servers were stopped after smoke checks.
-
-**Security/privacy concerns:** API listens on `127.0.0.1:5080` only. The health payload contains no configuration or user data. Mock providers need no credentials; governance denies every capability. No private data, API keys, or real conversation data were added. `node_modules`, build output, SQLite files, local configuration, and `data/` are ignored.
-
-**Open questions / decisions needed:** Claude should verify M0 naming and security boundaries, particularly the governance contract and the case-sensitive `CLAUDE.md` path in the Git diff. The current local commit still records the old filename casing until the M0 changes are committed later.
-
-**Handoff / next exact action:** Claude reviews the local M0 working tree against `ea200bb`, reruns builds/tests from CMD, and appends severity-ranked findings with file and line references. Codex addresses findings and records evidence before any M1 work. Keep all changes local until the owner authorizes publication.
-
----
-
-## 2026-10-16 22:55 MST | Claude | REVIEW
-
-**Objective:** Independent review of the M0 scaffold staged against local baseline `ea200bb`, before any M1 work.
-
-**Branch and commit:** `main`; baseline `ea200bb`; reviewed the staged index (`git diff --cached ea200bb`, 30 files). No unstaged or untracked changes were present at review time. This entry is the only change Claude made.
-
-**Files examined or changed:** Examined every staged file except the generated `frontend/package-lock.json` and `backend/MIRA.sln`, which I only checked by stat. Changed: `REVIEW.md` (this entry only).
-
-**Changes / findings:**
-- [Major] `backend/Mira.Api/Program.cs:13`: loopback binding is a default, not an enforced boundary. Any `Kestrel:Endpoints` configuration silently replaces `UseUrls("http://127.0.0.1:5080")` and logs only a warning. That configuration can come from plain env vars, `MIRA_Kestrel__...`, or the private `appsettings.Local.json` the README tells users to create. Evidence: starting with `Kestrel__Endpoints__Alt__Url=http://127.0.0.2:5081` logged `Overriding address(es) 'http://127.0.0.1:5080'` followed by `Now listening on: http://127.0.0.2:5081`. A `0.0.0.0` value would expose the unauthenticated API on the LAN, against handoff §2 and §5.5, and it contradicts this log's claim that the API "listens on 127.0.0.1:5080 only". Expected: startup refuses any non-loopback address until a reviewed remote-deployment milestone. Suggested fix: after start, read `IServerAddressesFeature` (or validate the `Kestrel:Endpoints` and `urls` configuration up front) and fail fast if any host is not loopback. Add a test for it.
-- [Minor] `Program.cs:7-8`, `README.MD` (config paragraph): the `MIRA_` prefix is stripped before keys are mapped, so the working form is `MIRA_Mira__ProviderMode`. `MIRA_ProviderMode` is silently ignored. Also, because `appsettings.Local.json` is added after the default sources, it overrides command-line arguments and unprefixed env vars. Either document the exact variable form and the precedence, or drop the custom prefix, since the defaults already load env vars.
-- [Minor] `backend/Mira.Api/Properties/launchSettings.json:8,17`: the profiles advertise `localhost:5299`, `https://localhost:7241`, and `launchBrowser: true`, but the app always binds to 5080. Running from VS, or `dotnet run` without `--no-launch-profile`, opens a dead URL and implies HTTPS. Remove the file or align it to `http://127.0.0.1:5080` with no browser launch.
-- [Minor] `backend/Mira.Core/Governance.cs:3-9`: deny-by-default is correct for M0. `DenyAllGovernanceService` is the only registered implementation, nothing calls it yet, and no capability or action endpoint exists. Verified: the only route is `/health/live`, and other paths return 404. The contract is thinner than `config/governance.example.md` §Enforcement contract, though. `CapabilityRequest` has no owner identity or grant/expiry context, `Action` is a free string rather than the handoff's action classes (`read`/`write`/`delete`/`execute`), and decisions aren't audited (AGENTS.md: "audit every decision"). This doesn't block M0, but extend the contract (owner from the authenticated principal, typed action, audit hook) before the first caller exists, at the latest when M1 auth lands.
-- [Minor] `backend/Mira.Tests/M0BoundaryTests.cs`: all 4 tests are unit tests. Nothing exercises the host: the `/health/live` response, `AllowedHosts` rejection, startup failure on an invalid `ProviderMode` through the real configuration pipeline, the DI resolving `IGovernanceService` to the deny-all implementation, or the loopback check above. M1's auth/CSRF acceptance will need a `WebApplicationFactory` harness anyway, so add it now with these cases.
-- [Minor] `docs/M0_ARCHITECTURE.md:3,28`: the note still says it "does not claim that the application is implemented" and says to document the ports "once implemented". The diagram also omits the governance boundary. Update it to describe what was built, including ports 5080 and 4321, the Vite `/health` proxy, and `IGovernanceService`.
-- [Minor] `.gitignore`: there's no `*.log` / `logs/` entry, although handoff §9 says logs with private text stay out of source control. `**/appsettings.Local.json` only matches that exact casing on case-sensitive checkouts (this repo has `core.ignorecase=true`). Consider an extra lowercase pattern.
-- [Minor] `REVIEW.md:5-10`: the "Current project status" header still says "M0, not started" and "Not established". Codex owns that header; please refresh it with the M0 resolution.
-- [Nit] `backend/MIRA.sln` vs the `Mira.*` projects and namespaces: inconsistent casing. Pick one. `Mira.sln`, or `Mira.slnx` on .NET 10, would match.
-- [Verified OK] `CLAUDE.md` rename is staged as `D CLAUDE.MD` / `A CLAUDE.md` and contains `@AGENTS.md`. The README acronym now matches the handoff (owner decision 2026-10-16). `AllowedHosts=localhost;127.0.0.1` rejects foreign Host headers, which helps against DNS rebinding. The health payload is just `{"status":"ok"}`. No secrets, keys, or private data are in the diff. There's no React/Vue/Svelte and no PowerShell dependency in the scripts. The provider contracts keep chat, STT, and TTS separate, and the mocks honor cancellation.
-
-**Commands run and results:**
-```text
-git diff --cached ea200bb --stat                      30 files, no unstaged/untracked changes
-cmd /c scripts\test.cmd                               PASS: build 0 warn/0 err; tests 4/4; astro check 0/0/0; static build 1 page
-dotnet run --project backend\Mira.Api\... --no-launch-profile --no-build (from repo root)
-  GET http://127.0.0.1:5080/health/live               PASS: 200 {"status":"ok"}; content root = backend\Mira.Api
-  GET /health/live with Host: evil.example            PASS: 400 (host filtering active)
-  GET /api/chat/stream                                PASS: 404 (no unreviewed endpoints)
-  GET http://[::1]:5080/health/live                   PASS: no listener (IPv4 loopback only)
-Kestrel__Endpoints__Alt__Url=http://127.0.0.2:5081 dotnet run ...
-                                                      FAIL (finding 1): binding overridden; listened on 127.0.0.2:5081
-```
-I did not re-run `npm audit`, and I did not start the Astro dev server (Codex reported its proxy check).
-
-**Security/privacy concerns:** Finding 1 is the only real exposure path: configuration can silently move the API off loopback. Everything else is hygiene.
-
-**Open questions / decisions needed:** None for the owner. Naming (`Mira.*`) is acceptable to the reviewer, apart from the solution-file casing nit.
-
-**Handoff / next exact action:** Codex fixes the Major (an enforced loopback check plus a test) and the Minors it accepts, adds a host-level test harness, reruns `scripts\test.cmd`, and appends a RESOLUTION entry. M0 can be committed locally once the Major is resolved and Claude has verified the fix. M1 still waits for that.
-
----
-
-## 2026-10-16 23:12 MST | Codex | RESOLUTION PENDING VERIFICATION
-
-**Objective:** Address Claude's M0 review, especially the endpoint override that could expose the unauthenticated API beyond loopback.
-
-**Branch and commit:** `main`, baseline `ea200bb`. M0 remains local and uncommitted; no GitHub push.
-
-**Files examined or changed:** `backend/Mira.Api/Program.cs`, new `LocalBindingPolicy.cs`, `Properties/launchSettings.json`, `backend/Mira.Tests/ApiHostTests.cs`, test project references, `.gitignore`, `README.MD`, `scripts/test.cmd`, renamed `backend/Mira.sln`, `docs/M0_ARCHITECTURE.md` (documentation sub-agent), and this append-only entry. `config/governance.example.md` was reviewed before touching the binding policy.
-
-**Changes / findings:**
-- [Major addressed, Claude to verify] M0 now rejects configured `Kestrel:Endpoints`, any `urls` value other than `http://127.0.0.1:5080`, and `HTTP_PORTS`/`HTTPS_PORTS`. Kestrel gets an explicit IPv4 loopback listener and an empty non-reloading endpoint configuration loader, so configuration cannot add a listener later. Validation runs after the host's final configuration is built but before it starts listening.
-- [Minor addressed] Added `WebApplicationFactory` host tests for health, foreign Host rejection, deny-all governance registration, invalid provider mode, and binding overrides. A separate test starts the real API DLL with `0.0.0.0:5081` in Kestrel configuration and requires startup failure. The suite now has 12 tests.
-- [Minor addressed] Aligned the launch profile to port 5080 without browser launch, documented `MIRA_Mira__ProviderMode` and configuration precedence, added log and lowercase local-config ignore patterns, updated the M0 architecture note, and renamed the solution to `Mira.sln`.
-- [Minor deferred] The governance request needs authenticated owner identity, typed action classes, and an audit hook before its first caller. M0 has no caller or action endpoint. M1 authentication is the latest acceptable point for that contract work.
-- [Minor status note] The top-of-file status header still says M0 has not started. `AGENTS.md` requires `REVIEW.md` updates to be append-only, so this entry supersedes the header without rewriting earlier text. The current status is M0 implemented, pending Claude verification and a local M0 commit.
-
-**Commands run and results:**
-```text
-dotnet test backend/Mira.sln -m:1              PASS: 12/12, including real-process binding rejection
-cmd /c scripts\test.cmd                       PASS: solution build 0 warnings/errors; 12/12 tests; Astro check 0 diagnostics; static build 1 page
-dotnet run ... --no-build --no-launch-profile  PASS: listening on 127.0.0.1:5080
-GET /health/live                              PASS: 200 {"status":"ok"}
-GET /health/live with Host: evil.example      PASS: 400
-```
-
-**Security/privacy concerns:** Binding overrides fail before the API starts, including an all-interfaces Kestrel endpoint. The health route remains the only public M0 route; no secrets or user data were added. Local logs and configuration are excluded from Git.
-
-**Open questions / decisions needed:** Claude should verify the Major is closed and check the updated host tests and documentation. No owner decision is needed for the M0 fix.
-
-**Handoff / next exact action:** Claude reviews the staged M0 diff and this unstaged resolution, reruns the CMD script and hostile-endpoint case, then appends verification. After verification, Codex may make the local M0 commit; M1 waits. Do not push to GitHub until the owner requests it.
-
----
-
-## 2026-10-16 23:20 MST | Claude | VERIFICATION
-
-**Objective:** Verify Codex's 23:12 resolution of the M0 review findings.
-
-**Branch and commit:** `main`; baseline `ea200bb`; reviewed the staged index (32 files). Still no M0 commit or push.
-
-**Files examined or changed:** Examined `backend/Mira.Api/LocalBindingPolicy.cs`, `Program.cs`, `Properties/launchSettings.json`, `backend/Mira.Tests/ApiHostTests.cs`, `.gitignore`, `README.MD`, `docs/M0_ARCHITECTURE.md`, and `backend/Mira.sln`. Changed: `REVIEW.md` (this entry only).
-
-**Changes / findings:**
-- [Major → RESOLVED] Loopback binding. `LocalBindingPolicy.Configure` replaces Kestrel's config loader with an empty, non-reloading source and calls `Listen(IPAddress.Loopback, 5080)`. `Validate` rejects `Kestrel:Endpoints`, any non-matching `urls`, `HTTP_PORTS`, and `HTTPS_PORTS` before `Run()`. There are two layers: if validation were bypassed, the explicit `Listen` would still win. I checked it live (results below), and the real-process test covers it.
-- [Minor → RESOLVED] `MIRA_` prefix and precedence: the README now documents `MIRA_Mira__ProviderMode` and the order (files < env < command line), and `Program.cs` re-adds env and command line after `appsettings.Local.json`.
-- [Minor → RESOLVED] `launchSettings.json` now has a single http profile on `127.0.0.1:5080` with `launchBrowser: false`. That passes the `urls` check.
-- [Minor → RESOLVED] Host-level tests: `ApiHostTests` adds `WebApplicationFactory` coverage for the health route and the 404 surface, foreign Host rejection, DI resolving to `DenyAllGovernanceService`, binding overrides (theory over 3 keys), provider-mode startup failure, and a real-process launch.
-- [Minor → RESOLVED] `docs/M0_ARCHITECTURE.md` describes the implemented baseline, ports, proxy, and governance boundary. `.gitignore` adds `*.log`, `logs/`, and a lowercase `appsettings.local.json`. The solution file is renamed to `Mira.sln`.
-- [Minor → DEFERRED, accepted] Governance contract (owner context, typed actions, audit). `docs/M0_ARCHITECTURE.md` records this as required before agent tools. It must land no later than the first caller of `IGovernanceService`, and I will check for it in the M1 review.
-- [Minor → OPEN] `REVIEW.md:5-10`: the "Current project status" header still says "M0, not started". Refresh it when M0 is committed.
-- [Nit, new] `ApiHostTests.RealApiProcessRefusesExternalKestrelEndpoint` uses `http://0.0.0.0:5081`. If the guard ever regresses, that test would briefly expose the API on the LAN for up to 10 s before the kill. Prefer a non-default loopback address such as `http://127.0.0.2:5081`, which proves the override without exposure. Optional.
-
-**Commands run and results:**
-```text
-cmd /c scripts\test.cmd                                   PASS: build 0 warn/0 err; tests 12/12; astro check 0/0; 1 page built
-dotnet run ... --no-launch-profile --no-build with:
-  Kestrel__Endpoints__Alt__Url=http://127.0.0.2:5081      PASS: exits, "Kestrel endpoint configuration is unavailable in local M0 mode."
-  MIRA_Kestrel__Endpoints__Alt__Url=http://127.0.0.2:5081 PASS: exits, same message
-  ASPNETCORE_URLS=http://127.0.0.2:5081                   PASS: exits, "M0 API binding must be http://127.0.0.1:5080."
-  (no overrides)                                          PASS: listening on http://127.0.0.1:5080
-  GET /health/live                                        PASS: {"status":"ok"}
-  GET /health/live, Host: evil.example                    PASS: 400
-```
-
-**Security/privacy concerns:** None open for M0. The API cannot be moved off loopback through configuration.
-
-**Open questions / decisions needed:** The owner decides whether to create the local M0 commit now. Publishing to GitHub stays on hold until the owner authorizes it.
-
-**Handoff / next exact action:** M0 is approved from review. Codex commits M0 locally when the owner agrees, refreshes the status header, and may apply the optional test nit. Then Codex records an M1 intent entry (auth + mock streaming) before writing M1 code.
-
----
-
-## 2026-10-17 | Claude | HANDOFF
-
-**Objective:** Relay the owner's instruction: commit M0 locally, including the new README.
-
-**Branch and commit:** `main`; baseline `ea200bb`. The M0 files are staged. `README.MD` and `REVIEW.md` have unstaged edits on top of the staged versions.
-
-**Files examined or changed:** `README.MD` (rewritten after line 11 by Claude's documentation sub-agent, then a TL;DR split by Claude) and `REVIEW.md` (this entry).
-
-**Changes / findings:**
-- README: lines 1–11 are unchanged. The text after line 11 is now a CMD TL;DR (install the prerequisites, then clone/build/test/run in a new window), a beginner walkthrough, configuration, troubleshooting, and status/docs. The Node requirement is corrected to 22.12+ / npm 9.6.5+, from astro 6.4.8 `engines` in `frontend/package-lock.json`. The sub-agent ran `cmd /c scripts\test.cmd`: PASS, ending "M0 checks passed.". It also ran `curl http://127.0.0.1:5080/health/live` → `{"status":"ok"}`.
-- [Question] `.gitignore` has an unstaged addition of `REVIEW.md` under "# Other". I don't know who made it. `REVIEW.md` is already tracked, so this line has no effect unless the file is also untracked (`git rm --cached`). That would remove the shared review log from the repository, contrary to handoff §9 and §12. Confirm intent with the owner before staging this `.gitignore` change.
-
-**Handoff / next exact action:** Codex stages `README.MD` and `REVIEW.md` (`git add README.MD REVIEW.md`). It confirms the `.gitignore` question with the owner, then creates the local M0 commit. No push. It refreshes the "Current project status" header (`REVIEW.md:5-10`) as part of the commit or right after, then records an M1 intent entry before writing M1 code.
-
----
-
-## 2026-10-17 19:43 MST | Codex | M1 INTENT
-
-**Objective:** Begin M1 with a bounded local-auth foundation, then add text chat streaming with a mock provider. This entry records intent before any M1 implementation.
-
-**Branch and commit:** `main`; M0 local baseline `9b4bbce` (`feat: establish MIRA M0 local baseline`). Nothing pushed.
-
-**Files examined or changed:** `REVIEW.md` (this intent entry only after the M0 commit). No M1 code changed.
-
-**Planned scope:** Inspect the existing API, frontend, and tests; implement local user bootstrap, login/logout, password hashing that accepts at least 35 characters, protected sessions, CSRF controls, and owner-aware request identity. Add tests for authentication boundaries and ownership. After that bounded unit is reviewed, implement POST text chat with SSE-formatted `fetch` events and a mock chat provider. Do not enable paid providers or agent tools in this unit.
-
-**Security/privacy and architecture checks:** Keep the API loopback-bound and default deny. Before the first governance caller, expand the governance contract with requester identity, typed actions, and an audit record for every decision. Do not store real credentials or conversation data in the repository. Document public routes and event contracts as they are added.
-
-**Tests/evidence so far:** Claude approved M0 after `scripts\test.cmd` passed (12/12 .NET tests and Astro check/build). The M0 staged diff passed `git diff --cached --check` before commit. No M1 tests run because M1 code has not started.
-
-**Findings/blockers:** None for this planning entry. The owner's unstaged `.gitignore` edit remains outside the M0 commit pending confirmation. Claude's optional loopback-address test nit remains available for a later cleanup.
-
-**Next exact action:** Inspect the auth-related implementation and tests, then implement and validate the first bounded M1 auth unit; record results in a new append-only review entry for Claude. Keep all work local until the owner authorizes a push.
-
----
-
-## 2026-10-17 | Claude | ROLE CHANGE
-
-**Objective:** Record the owner's role reassignment and make the rules role-based so future swaps need only a status-header edit.
-
-**Branch and commit:** `main` at `9b4bbce`. Changes below are unstaged.
-
-**Files examined or changed:** `AGENTS.md` (Responsibilities), `docs/STT3_HANDOFF.md` (header line 6, §12 workflow), `REVIEW.md` (status header Roles line, this entry).
-
-**Changes / findings:**
-- Owner decision (2026-10-17): **Claude is Implementer, Codex is Reviewer and occasional implementer.** The owner may swap roles later.
-- `AGENTS.md` and handoff §12 now define Implementer/Reviewer roles instead of naming agents, add "an agent never reviews its own change", and point to the **Roles** line in this header as the source of truth.
-- Codex's 2026-10-17 19:43 M1 INTENT entry is adopted unchanged in scope: local auth foundation first (bootstrap, login/logout/me, ≥35-char password hashing, protected sessions, CSRF, owner-aware identity, governance contract expansion before first caller), then mock SSE chat streaming. Claude implements it; Codex reviews.
-- These doc edits are Claude's first change under the new roles, so Codex reviews them along with the first M1 unit.
-- Note: `.gitignore` still has an unstaged leftover (`# Other` header and blank lines) after the owner removed the `REVIEW.md` line; harmless, can be discarded.
-
-**Commands run and results:** None (documentation only).
-
-**Handoff / next exact action:** Claude records any refinement of the M1 auth plan, implements the first bounded auth unit with tests, runs `scripts	est.cmd`, and appends an IMPLEMENTATION entry for Codex to review. No push.
-
----
-
-## 2026-10-17 | Claude | IMPLEMENTATION
-
-**Objective:** Complete M1, local authentication plus text chat streaming with a mock provider, under Codex's 2026-10-17 M1 INTENT, as adopted in the ROLE CHANGE entry. Hand it to Codex for review.
-
-**Branch and commit:** `main` at `9b4bbce`. All M1 work is unstaged and uncommitted, with nothing pushed. Review with `git diff` plus the untracked files (`git status --short`). The ROLE CHANGE doc edits (`AGENTS.md`, `docs/STT3_HANDOFF.md`) are in the same tree and also need review. `.gitignore` holds only the owner's leftover blank `# Other` lines, which aren't part of M1.
-
-**Files examined or changed:**
-- Core (`backend/Mira.Core`):
-  - `MiraOptions.cs`: `DatabasePath`, `AllowedOrigins`, `Auth`/`Chat` options, all validated.
-  - New `Accounts.cs`, `Sessions.cs`, `Conversations.cs`.
-  - `ProviderContracts.cs`: `IChatProvider` now takes a `ChatRequest` and exposes `ModelId`.
-  - `Governance.cs`: owner, typed `ActionClass`, `GrantId`, async evaluation, `IGovernanceAuditLog`.
-- Infrastructure (`backend/Mira.Infrastructure`):
-  - New `Sqlite/` folder: `MiraDatabase` (versioned migrations), `SqliteUserAccountService`, `SqliteSessionStore`, `SqliteGovernanceAuditLog`.
-  - New `InMemoryConversationStore.cs`.
-  - `MockProviders.cs`: multi-delta mock, configurable delay, `[mock-error]` hook.
-  - `DenyAllGovernanceService.cs`: now audits each decision.
-  - csproj: `Microsoft.Data.Sqlite` 10.0.13, plus the `Microsoft.AspNetCore.App` framework reference for `PasswordHasher`.
-- API (`backend/Mira.Api`):
-  - `Program.cs`: `create-user` branch, then binding validation, then migrations.
-  - New `MiraHost.cs` (configuration, DI, cookie auth, fallback authorization, antiforgery, rate limiter, middleware order) and `AccountCommands.cs`.
-  - New `Auth/`: `AuthEndpoints`, `LoginThrottle`, `CurrentUser`.
-  - New `Security/RequestSecurity.cs`: origin check and CSRF filter.
-  - New `Chat/`: `ChatEndpoints`, `SseWriter`, `ActiveTurnRegistry`.
-  - `LocalBindingPolicy.cs`: messages reworded from "M0" to "local-only".
-- Tests (`backend/Mira.Tests`):
-  - New `TestSupport.cs` (a temp-DB factory, so tests never touch `%LOCALAPPDATA%`), `AuthTests.cs`, `ChatStreamTests.cs`, `StoreTests.cs`.
-  - Updated `ApiHostTests.cs` and `M0BoundaryTests.cs`.
-  - New package `Microsoft.Extensions.TimeProvider.Testing` 10.11.0.
-- Frontend (`frontend/`):
-  - `src/pages/index.astro`: sign-in plus chat UI.
-  - New `src/scripts/api.ts`, `chat.ts`, `sse.ts`, `sse.test.ts`.
-  - `astro.config.mjs`: proxies `/api`.
-  - `package.json` and lock: Astro 6.4.8 to 7.4.0 (see findings), Vitest 5.0.5 added, `npm test`.
-- Scripts: new `scripts/create-user.cmd`. `scripts/test.cmd` adds `npm test` and now ends with "All checks passed." Both scripts are CRLF.
-- Docs:
-  - New `docs/M1_AUTH_AND_STREAMING.md` (API table and the SSE event contract; public interface).
-  - New `docs/decisions/0001-sqlite-access-without-ef-core.md`.
-  - `README.MD` updated.
-  - The documentation sub-agent owned only `README.MD` and `docs/M1_AUTH_AND_STREAMING.md`; Claude reviewed both against the code.
-
-**Changes / findings (self-reported; Codex to verify):**
-- **M1 acceptance coverage:**
-  - Unauthenticated API access returns 401 under a default-deny fallback policy.
-  - A 52-character Unicode passphrase works, and passwords are never trimmed or truncated.
-  - Wrong password and unknown user get the same generic 401.
-  - The password never appears in logs: a test captures every log line at Trace, and the live log was clean.
-  - An authenticated user receives ordered deltas (live through the Vite proxy, about 300 ms apart).
-  - A client abort cancels the provider through `RequestAborted` and saves the partial reply as `interrupted`, verified both in a test and live through the proxy.
-  - Login is throttled per username and rate-limited per IP; both 429s carry a problem title.
-- **Also built:** sessions stored server-side as SHA-256 hashes, with idle and absolute expiry, revocation on logout (a replayed cookie gets 401) and a new session on each login. Disabling a user ends their sessions. CSRF tokens are user-bound and refreshed on login and logout. There's an Origin and `Sec-Fetch-Site` check, a 409 on competing sends, a 400 on empty or oversized messages, and a timeout reported as `response.error` with code `timeout`. `/api/chat/cancel` produces `response.cancelled`. Every store call is scoped to the owner, an owner ID smuggled into the body is ignored, and `ownerUserId` is not returned to the client.
-- **Bug found and fixed during live testing:** `create-user` read piped passwords in the legacy console code page, which corrupted non-ASCII characters. It now reads UTF-8 (`AccountCommands.cs`), with a regression test that fails against the old code.
-- **Mutation checks:** disabling the CSRF filter, or removing session revocation on logout, makes 4 tests fail. Reverting the stdin fix makes its test fail.
-- **[Question] Security dependency upgrade:** after adding Vitest, `npm audit` reported critical/high advisories in Astro 6.4.8 itself: XSS and RCE in image optimization, esbuild's dev-server arbitrary file read on Windows, and sharp/libvips. These postdate the M0 audit. There is no 6.x fix, so I upgraded to Astro 7.4.0. Result: 0 vulnerabilities, and check/build/tests pass. Astro 7.4 requires Node 22.22.0 or newer, and the README is updated.
-- **[Question] ADR 0001:** M1 uses `Microsoft.Data.Sqlite` with append-only SQL migrations instead of EF Core, a departure from handoff section 6. The rationale and the M2 migration path are in the ADR. This needs owner/Reviewer confirmation.
-- **Deliberate scope limits:**
-  - Conversations live in memory until M2.
-  - The real Azure chat provider is not built: provider mode is Mock-only, and a paid service needs the owner's approval.
-  - Cookies are not `Secure` over loopback HTTP. They become `Secure` automatically under HTTPS.
-  - There's no Markdown rendering; replies are plain text via `textContent`.
-  - The login throttle is in memory.
-- **Additions to the handoff API (section 7):** `GET /api/auth/csrf`, `GET /api/conversations/current` (one conversation per user for M1) and `POST /api/chat/cancel`. All are documented in the M1 doc.
-- **Known minor items for the reviewer to weigh** (from the doc sub-agent's report and my own review):
-  - Password length limits count UTF-16 code units, so an emoji counts as 2.
-  - The username lockout window is fixed, measured from the first failure.
-  - The UI's Stop aborts the fetch rather than calling `/api/chat/cancel` (handoff section 7 prefers abort), so the UI never sees `response.cancelled`.
-  - There's no CLI command to disable a user.
-  - On page load, an expired session shows the sign-in form without a "session ended" message.
-  - Behind the dev proxy every client is 127.0.0.1, so the per-IP limit is effectively global.
-- **Not verified:** I didn't drive the browser UI interactively, since no browser automation was available. The page was served (HTTP 200) and the same API flows were exercised with curl through the proxy. A manual smoke test is still needed: sign in, send, Stop, sign out, and keyboard-only use.
-
-**Commands run and results:**
-```text
-cmd /c scripts\test.cmd                     PASS: build 0 warn/0 err; dotnet test 62/62; vitest 6/6; astro check 0 errors; build 1 page; "All checks passed."
-npm audit (frontend, after Astro 7.4.0)     PASS: found 0 vulnerabilities
-Mutation: CSRF filter off + logout revoke off   EXPECTED FAIL: 4 tests failed; restored afterwards
-Mutation: stdin back to Console.In             EXPECTED FAIL: CreateUserCommandReadsPipedPasswordsAsUtf8; restored afterwards
-Live (temp DB via Mira__DatabasePath, API :5080 + Astro dev :4321, MockDelayMilliseconds=300):
-  create-user with piped Unicode passphrase    PASS (after fix); duplicate (case-insensitive) refused, exit 1
-  create-user.cmd while the API is running      PASS (build up to date)
-  POST /api/auth/login via proxy               PASS 200
-  POST /api/chat/stream via proxy              PASS: started + 13 deltas, ~300 ms apart, + completed
-  curl --max-time 1 mid-stream                 PASS: assistant message "interrupted" with partial text
-  no X-CSRF-TOKEN / Origin evil.example        PASS 403 / 403
-  API log grep for passphrase/message text     PASS: none
-%LOCALAPPDATA%\MIRA                          not created; tests and the demo used temp DBs only
-```
-
-**Security/privacy concerns:**
-- Secrets and data: no secrets, real credentials, conversation data or DB files are tracked. The DB defaults to `%LOCALAPPDATA%\MIRA\mira.db`, outside the repo. Data-protection keys use the ASP.NET Core default (`%LOCALAPPDATA%\ASP.NET\DataProtection-Keys`, DPAPI on Windows).
-- Logs: request bodies are never logged, and provider errors log only the exception type.
-- Governance: still deny-all. No M1 code path calls it, but the contract now meets the M0 review's deferred requirement: owner from the principal, typed action, every decision audited.
-
-**Open questions / decisions needed:** (1) Owner: approve the Astro 7 security upgrade and ADR 0001. (2) Codex: anything in the SSE event contract to change before the frontend depends on it further.
-
-**Handoff / next exact action:** Codex reviews the working tree against `9b4bbce`, reruns `scripts\test.cmd` from CMD, and appends severity-ranked findings. Claude then resolves them and records a RESOLUTION entry. After that, the owner decides on the local M1 commit. M2 does not start until M1 has been reviewed.
-
----
-
-## 2026-10-17 20:45 MST | Codex | REVIEW
-
-**Objective:** Review Claude's uncommitted M1 implementation and role-document edits against local baseline `9b4bbce`; independently rerun the CMD test script. Codex is Reviewer per the current Roles header and made no implementation changes.
-
-**Branch and commit:** `main` at `9b4bbce`; reviewed the working tree, including untracked M1 files. No commit or push.
-
-**Files examined or changed:** Examined `AGENTS.md`, `docs/STT3_HANDOFF.md`, `config/governance.example.md`, `docs/M1_AUTH_AND_STREAMING.md`, ADR 0001, `README.MD`, API/auth/chat/core/infrastructure code, frontend UI/parser, scripts, and the new and changed tests. Changed only `REVIEW.md` by appending this entry. The owner's leftover `.gitignore` edit was not treated as M1.
-
-**Findings (severity-ranked):**
-- **[Major] Sign-out can appear successful while the session remains valid.** `frontend/src/scripts/chat.ts:228-236` catches *any* failed `/api/auth/logout` request, refreshes a CSRF token, then calls `showLogin()` unconditionally. If the request fails before the server revokes the session (for example, the API is unavailable or returns 403), the browser still holds `mira.session`; reloading or calling `/api/auth/me` restores access even though the UI said the user signed out. Keep the signed-in view and show a clear error until revocation succeeds; handle an already-expired 401 separately. Cover the failed-logout path in a UI-level test or manual verification.
-- **[Minor] Role handoff still contains an obsolete named assignment.** `docs/STT3_HANDOFF.md:533` says "Suggested initial Codex task" and directs Codex to implement M1. That conflicts with the current Roles header and the new role-based `AGENTS.md:10-14` / handoff `docs/STT3_HANDOFF.md:519-527`. Replace it with a role-neutral historical note or remove the now-completed suggestion. The paragraph at handoff line 527 also interrupts the numbered workflow before items 6-7; keep the workflow continuous.
-- **[Minor] Browser interaction remains unverified.** Claude's IMPLEMENTATION entry explicitly says the page was served and API flows were exercised via curl, but sign-in, send, Stop, sign-out, and keyboard-only use were not driven through a browser. The backend and SSE parser tests pass; a browser smoke pass is still needed before M1 is considered user-ready, especially after the Astro major upgrade and the sign-out fix.
-- **[Question / owner decision] ADR 0001 changes the handoff's EF Core + SQLite migration choice to direct `Microsoft.Data.Sqlite` and manual migrations** (`docs/STT3_HANDOFF.md:366`, `docs/decisions/0001-sqlite-access-without-ef-core.md`). The implementation is coherent for the three M1 tables and its migration tests pass, but the architectural departure remains proposed. The owner should accept or reject the ADR before an M1 commit; this review is not that approval.
-- **[Question / owner decision] Astro 7.4.0 is a major dependency upgrade** (`frontend/package.json:10`; `README.MD` prerequisites). The updated tree builds and `npm audit` found no vulnerabilities. Claude requested owner approval for this upgrade; keep that decision explicit before the M1 commit.
-
-**Checks and results:**
-```text
-cmd /c scripts\test.cmd                              PASS: .NET build 0 warnings/0 errors; 62/62 xUnit; 6/6 Vitest; Astro check 0 errors/0 warnings/0 hints; static build 1 page; "All checks passed."
-cmd /c "cd frontend && npm audit --audit-level=moderate"  PASS: 0 vulnerabilities
-cmd /c "cd frontend && npm ls astro vitest --depth=0"    PASS: astro@7.4.0, vitest@5.0.5 installed
-git diff --check 9b4bbce                         WARN: owner's excluded `.gitignore` blank line at EOF and a Markdown hard-line-break in the handoff header; no code whitespace error
-```
-
-**Security/privacy and architecture assessment:** The host remains loopback-bound; authorization falls back to authenticated-only; login/unsafe API requests use CSRF and origin checks; sessions are server-side and validated per request; conversation store methods take owner IDs from the principal. Governance remains deny-all and audits decisions; no endpoint invokes it yet. No tracked secrets, real conversation data, or database files appeared in the reviewed tree. The SSE envelope and event names match the M1 note; I found no contract change to request now. The Major sign-out behavior is the security-relevant exception above.
-
-**Blockers and next exact action:** The Major must be resolved before M1 is accepted. Claude should fix it, address the role-doc Minor, complete a browser smoke check, rerun relevant tests, and append a RESOLUTION entry. The owner decides ADR 0001 and the Astro upgrade before authorizing a local M1 commit. Do not push.
-
-**Reference correction (Codex, same review):** The EF Core requirement cited in the Question above is at `docs/STT3_HANDOFF.md:349` (not line 366), and the Astro dependency is at `frontend/package.json:12` (not line 10). Findings and severity are unchanged.
-
----
-
-## 2026-10-17 21:20 MST | Claude | RESOLUTION
-
-**Objective:** Resolve Codex's 2026-10-17 20:45 MST M1 REVIEW findings.
-
-**Branch and commit:** `main` at `9b4bbce`, with M1 still unstaged and uncommitted and nothing pushed.
-
-**Files changed:**
-- New `frontend/src/scripts/session.ts` and `frontend/src/scripts/session.test.ts`.
-- `frontend/src/scripts/chat.ts`: the sign-out handler.
-- `docs/STT3_HANDOFF.md`: section 12.
-- `docs/M1_AUTH_AND_STREAMING.md` and `README.MD`: the sign-out behavior and the test list.
-- `REVIEW.md`: this entry and the status header.
-
-**Resolutions:**
-- **[Major] Sign-out could appear successful while the session remained valid: fixed.**
-  - Sign-out logic now lives in `session.ts`, in `signOut()`. It reports success only when `/api/auth/logout` returns 200 (the server revoked the session) or 401 (the session had already ended).
-  - A 403 gets one retry with a freshly fetched CSRF token. That covers a stale token; an origin refusal fails again.
-  - Any other result reports failure: network error, 5xx, a second 403, or a failed CSRF refresh.
-  - In `chat.ts`, a failure keeps the chat view and shows "Sign-out failed, so you are still signed in. Check that MIRA is running, then try again." in the chat error region and the live announcer. The button is disabled while sign-out runs, then re-enabled so the user can retry.
-  - Tests: 6 Vitest cases cover 200, 401, an unreachable API, 500, 403 then retry succeeding, and 403 twice. Mutation check: making the failure branch report success fails 3 of them.
-- **[Minor] Obsolete named assignment in the handoff: fixed.**
-  - The "Suggested initial Codex task" paragraph is now a role-neutral "Initial milestone order (historical)" note, which points to the Roles line.
-  - The Roles paragraph moved below workflow item 7, so the numbered list 1 to 7 is continuous.
-  - The paragraph now records who did what: Codex implemented M0 with Claude reviewing, and Claude implemented M1 with Codex reviewing.
-- **[Minor] Browser interaction was unverified: done.**
-  - I drove headless Microsoft Edge 155 over the Chrome DevTools Protocol, with real key events, against the real API (`Mira.Api.exe`, temp DB, mock delay 250 ms) and the Astro dev server through its proxy. The user had a 46-character Unicode passphrase including an emoji, created with `create-user --password-stdin`. 32 of 32 checks passed:
-    - Keyboard-only sign-in: focus starts on the username field, Tab moves to the password field, Enter submits, focus then moves to the message box, and the password field is cleared.
-    - Enter sends. Reply text grows over time (5 to 19 characters in 700 ms). The reply completes, the Stop button shows only while streaming, and the composer is cleared.
-    - Escape mid-stream marks the reply interrupted with the "Stopped" label and keeps the partial text.
-    - Reload keeps the session, and the conversation reloads from the server (`completed,completed,completed,interrupted`).
-    - Keyboard sign-out shows the sign-in view, and a reload stays signed out.
-    - **Failed sign-out drill (the Major):**
-      - Kill the API, then click Sign out. The chat view stays, the sign-in view stays hidden, the "still signed in" error is shown, and the button is re-enabled.
-      - Restart the API and reload: still signed in, which proves the session really was valid.
-      - Sign out again: it succeeds, and a reload stays signed out.
-    - No script exceptions or console errors.
-  - The first attempt failed 3 checks because an earlier crashed run had left the Edge profile signed in, which was a fault in the harness, not the product. The rerun from a clean state passed 32/32.
-  - The driver script is outside the repo (Claude's session scratchpad, `smoke/drive.mjs`) and is not committed. It can be added as a repeatable `scripts\` smoke test if the owner wants one.
-  - Not covered: screen-reader output, and a visual or layout check.
-- **[Question] ADR 0001 and Astro 7.4.0:** still owner decisions, with nothing changed. Codex's review is not approval, as Codex noted.
-
-**Commands run and results:**
-```text
-npx vitest run (frontend)                       PASS: 2 files, 12/12
-Mutation: signOut failure branch -> success     EXPECTED FAIL: 3 failed / 9 passed; restored, 12/12 again
-npx astro check                                 PASS: 0 errors, 0 warnings, 0 hints
-Browser smoke (headless Edge 155, CDP)          PASS: 32/32 (first attempt 29/32: stale signed-in profile from a crashed run)
-API log grep for passphrase / message text      PASS: 0 matches
-cmd /c scripts\test.cmd                         PASS: build 0 warn/0 err; 62/62 xUnit; 12/12 Vitest; astro check 0 errors; 1 page built; "All checks passed."
-%LOCALAPPDATA%\MIRA                             not created
-Smoke processes (API :5080, Astro :4321, Edge :9333) stopped by PID; no listeners left
-```
-
-**Security/privacy:** The fix closes a misleading security state: the UI could say "signed out" while the cookie stayed valid. The server-side logout and revocation behavior is unchanged and still covered by `AuthTests`. No secrets or data were added to the repo, and the smoke DB and browser profile live in the scratchpad.
-
-**Next exact action:** Codex verifies these resolutions against the working tree and reruns `scripts\test.cmd`. The owner then decides on ADR 0001 and the Astro 7 upgrade and authorizes the local M1 commit. Do not push.
-
----
-
-## 2026-10-17 23:53 MST | Codex | VERIFICATION
-
-**Objective:** Verify Claude's 21:20 MST M1 RESOLUTION against the uncommitted working tree and independently rerun the CMD test script. Codex remains Reviewer per the Roles header.
-
-**Branch and commit:** `main` at `9b4bbce` plus unstaged/untracked M1 changes. No commit or push.
-
-**Files examined or changed:** Examined `frontend/src/scripts/session.ts`, `session.test.ts`, the sign-out handler in `chat.ts`, `docs/STT3_HANDOFF.md` §12, and the corresponding `docs/M1_AUTH_AND_STREAMING.md` and `README.MD` descriptions. Changed only `REVIEW.md` by appending this entry.
-
-**Verification findings:**
-- **[Major → RESOLVED] Misleading sign-out state.** `session.ts` returns success only after a successful logout response or a 401 meaning the session had already ended. It refreshes CSRF and retries one 403, and returns failure for network errors, server errors, a second 403, or failed CSRF refresh. `chat.ts` now calls `showLogin()` only on success; on failure it retains the chat view, displays the explicit still-signed-in error, announces it, and re-enables Sign out. Six new Vitest cases cover the decision paths. Server-side session revocation remains covered by xUnit.
-- **[Minor → RESOLVED] Role handoff.** Handoff §12 now keeps workflow items 1–7 together and replaces the obsolete Codex assignment with a role-neutral historical milestone note. The Roles header remains the assignment source of truth.
-- **[Minor → RESOLVED, evidence reviewed] Browser smoke.** Claude's RESOLUTION records a 32/32 headless Edge pass covering sign-in, streamed send, Stop/Esc, reload, successful sign-out, and failed sign-out while the API is down followed by retry. The driver is outside the repo, so I did not independently rerun that browser check. Its limitation (no screen-reader or visual/layout check) remains documented.
-- **[Question / owner decision]** ADR 0001 (direct SQLite rather than EF Core in M1) and the Astro 7.4.0 upgrade remain pending owner decisions. This verification does not approve either architectural/dependency choice.
-
-**Commands run and results:**
-```text
-cmd /c scripts\test.cmd    PASS: .NET build 0 warnings/0 errors; xUnit 62/62; Vitest 12/12 in 2 files; Astro check 0 errors/0 warnings/0 hints; static build 1 page; "All checks passed."
-```
-
-**Security/privacy and accessibility:** The failed-logout path no longer claims the server session was revoked while the cookie may remain valid. The error is visible and announced; the retry button remains available. No implementation or private-data files were changed by this review.
-
-**Blockers and next exact action:** No reviewer finding remains open from the 20:45 MST review. The owner decides ADR 0001 and Astro 7, then decides whether to authorize a local M1 commit. Nothing goes to GitHub without the owner's authorization.
-
----
-
-## 2026-10-17 23:57 MST | Codex | QUESTION / ADVICE
-
-**Objective:** Give the owner an independent recommendation on ADR 0001 and record the owner's Astro decision. This is advice, not an ADR approval or an implementation change.
-
-**Branch and commit:** `main` at `9b4bbce` plus uncommitted M1 work. No commit or push.
-
-**Files examined or changed:** Examined ADR 0001, handoff §6 and M2–M7 roadmap, `MiraDatabase`, the three SQLite stores, storage tests, and the current Roles header. Appended this entry to `REVIEW.md` only.
-
-**Owner decision recorded:** The owner approved the Astro 7.4 upgrade and reports Node 22.23 is installed. ADR 0001 remains for the owner to decide.
-
-**Recommendation:** **Accept ADR 0001 for M1 only: keep the current direct `Microsoft.Data.Sqlite` implementation for the M1 commit.** Do not rewrite the three existing tables and tested account/session/audit behavior merely to introduce EF Core before this milestone is committed. Put an explicit data-layer decision at the **start of M2, before persistent conversations are designed**. Given the planned conversation, persona, settings, and memory tables, I would *lean toward* EF Core for routine CRUD and migrations in M2 if that model is built as described. Keep targeted SQL for M4 FTS5 search and any specialized audit/search queries. M5–M7 add comparatively little ordinary database CRUD; M7 Tavily web retrieval is not a local document index. This is a checkpoint, not a commitment to keep hand-written SQL forever.
-
-**Cost of each path:** Direct SQLite keeps dependencies and the M1 code small, but each new table needs hand-written migration SQL, query mapping, and careful owner-scoping tests. That maintenance cost grows most in M2–M4. EF Core adds a `DbContext`, entity mappings, tooling, generated migrations/snapshot files, and review of generated schema changes; it reduces repetitive CRUD code but does **not** eliminate SQL for FTS5 or SQLite-specific schema changes. Microsoft's EF SQLite guidance documents table rebuilds for some schema alterations and limits around manually created artifacts; EF is not a risk-free migration button. [EF Core SQLite limitations](https://learn.microsoft.com/en-us/ef/core/providers/sqlite/limitations), [SQLite FTS5](https://www.sqlite.org/fts5.html).
-
-**Switching later and data risk:** Switching at the start of M2 is a **medium, bounded infrastructure task**, mostly behind the existing account/session/audit/conversation interfaces; it should not require a new database format or API. The hard part is mapping M1's exact table names, GUID/time formats, indexes, foreign keys, and existing rows, then establishing an EF migration baseline for databases that already have `SchemaMigrations` so EF does not try to create the same tables twice. This is a *manual* reconciliation, not an automatic import. Back up a real populated SQLite database, test a fresh install **and** an upgrade copy, verify row counts and login/session behavior, and prove restore before releasing it. Microsoft describes the need to back up and mark a replacement baseline as already applied when adopting a new migration history. Waiting until after M3/M4 would be substantially harder because more user data, relations, and FTS5 artifacts would need matching. [EF Core migration history guidance](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/managing), [SQLite online backup](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/backup).
-
-**Ownership, lock-in, and security:** Neither path locks MIRA into a different database: EF Core's SQLite provider itself uses `Microsoft.Data.Sqlite`, and EF can execute raw SQL where needed. A later switch is work, not a forced data export. Neither choice supplies encryption, access control, or safe migrations automatically. Keep parameterized SQL, authenticated owner IDs on every resource query, default-deny checks, migration/restore tests, and private database files. EF query filters could help owner isolation, but can be bypassed or misconfigured; they cannot replace authorization tests. [Microsoft.Data.Sqlite overview](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/), [SQLite parameters](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/parameters), [EF Core query filters](https://learn.microsoft.com/en-us/ef/core/querying/filters).
-
-**If the owner prefers EF before the M1 commit:** This is a **small-to-medium rewrite**, not a package-only change: Claude, as current Implementer, should map the three tables, create and verify migrations for fresh and already-created M1 databases, replace or adapt the three stores, and rerun security/host/storage tests. Codex should review it; Codex should not implement and then review the same work. I recommend the M2 checkpoint instead.
-
-**Commands and tests:** Read-only code/document review and official Microsoft/SQLite documentation; no build rerun because no code changed. The independent M1 verification at 23:53 MST remains the latest test evidence (62/62 xUnit, 12/12 Vitest, Astro check/build passed).
-
-**Next exact action:** Owner accepts or rejects ADR 0001 for M1. If accepted, Claude records that decision and the M2 data-layer checkpoint before any local M1 commit; the owner separately authorizes the commit. Astro 7.4 is already approved. Do not push to GitHub without explicit authorization.
-
----
-
-## 2026-10-31 | Claude | DECISION + COMMIT
-
-**Objective:** Record the owner's M1 decisions and make the local M1 commit the owner authorized.
-
-**Owner decisions (verbatim intent, from the owner in the Claude session):**
-- **ADR 0001:** "yes, keep SQLite for M1" (2026-10-17). It is accepted for M1 only, and the data layer is reopened at the start of M2, as Codex recommended at 23:57 MST.
-- **Astro 7.4.0 upgrade:** approved (2026-10-17, already recorded by Codex). Node 22.23 is installed, so no machine change is needed.
-- **Local M1 commit:** authorized on 2026-10-31 ("go ahead and update and run 1-4"). **No push.**
-
-**Files changed in this step:**
-- `docs/decisions/0001-sqlite-access-without-ef-core.md`: status set to Accepted for M1 only; the Revisit section now carries the M2 checkpoint conditions.
-- `README.MD`: new "Why MIRA exists" section, written by a documentation sub-agent from the handoff and the original STT repository, then reviewed by Claude against its sources. This is a documentation-only change made after Codex's verification.
-- `README.MD` (Project status section), `docs/M0_ARCHITECTURE.md`, `docs/M1_AUTH_AND_STREAMING.md`: stale "pending review" status lines updated to "reviewed". The sub-agent flagged them, and its STT quotes were spot-checked against the STT README.
-- `REVIEW.md`: this entry and the status header.
-
-**Commit scope:**
-- All M1 work reviewed by Codex at 20:45 and 23:53 MST.
-- The ROLE CHANGE doc edits to `AGENTS.md` and `docs/STT3_HANDOFF.md`.
-- The ADR status, the README section, and `REVIEW.md`.
-- **Excluded:** the owner's leftover `.gitignore` whitespace edit, which isn't M1. It stays unstaged.
-
-**Tests:**
-```text
-cmd /c scripts\test.cmd (2026-10-31)   PASS: build 0 warn/0 err; xUnit 62/62; Vitest 12/12; astro check 0 errors; 1 page built; "All checks passed."
-```
-Documentation-only edits followed; no code changed after this run.
-
-**Next exact action:** Start of M2. The owner decides on EF Core or plain SQLite per ADR 0001's Revisit; Codex's advice leans EF Core for routine CRUD. Then Claude records the M2 intent. Codex may review the README section and the ADR status edit at its next session. Nothing goes to GitHub without the owner's authorization.
-
----
-
-## 2026-10-31 15:05 MST | Codex | REVIEW
-
-**Objective:** Review the documentation-only additions made after M1 verification and included in local commit `89a312a`, against Claude's 2026-10-31 DECISION + COMMIT entry. Codex remains Reviewer per the Roles header.
-
-**Branch and commit:** `main` at `89a312a` (`feat: add M1 local authentication and streamed mock chat`), parent `9b4bbce`; no push.
-
-**Files examined or changed:** Used `git show 89a312a -- README.MD docs/` and examined the committed README, ADR 0001, M0/M1 architecture status lines, STT 3.0 handoff, Claude's decision entry, and the local original STT README for historical claims. Changed only `REVIEW.md` by appending this entry.
-
-**Findings:** **No Blocker, Major, or Minor finding in the three requested documentation changes.** ADR 0001 records the owner's M1-only acceptance and requires a data-layer decision before M2 conversation persistence, with a baseline for existing tables, fresh/populated database tests, and backup/restore if EF Core is chosen. The README's STT history (.NET 9, Azure Speech/OpenAI/Search, gated local commands, cloud-first wording, simple local configuration, single-line persona) is supported by the original STT README; its future MIRA features are presented as goals, while M1 is described as mock-only and local. The README project status and M0/M1 architecture status lines agree with the reviewed milestones and commit history. `docs/M0_ARCHITECTURE.md` describes the historical M0 snapshot, so its M0-only endpoint language is appropriate in that context.
-
-**Commands and evidence:**
-```text
-git show 89a312a -- README.MD docs/       REVIEWED: commit documentation and ADR
-git show --check --oneline 89a312a        WARN: two-space Markdown hard line break on docs/STT3_HANDOFF.md:6 (previous role-doc edit; no substantive issue in the requested changes)
-git diff --check -- README.MD              PASS: separate unstaged README wording edit has no whitespace error
-```
-No build or tests rerun for this documentation review. Claude's DECISION + COMMIT entry reports `scripts\test.cmd` passed on 2026-10-31 (62/62 xUnit, 12/12 Vitest, Astro check/build) before the documentation-only edits.
-
-**Working-tree boundary:** Besides this new review entry, `.gitignore` retains the owner's unstaged whitespace edit. `README.MD` has a separate unstaged one-word change (`the owner's first` to `the first`) after commit `89a312a`; it was not part of the committed documentation reviewed here. I left both untouched.
-
-**Security/privacy and next exact action:** These documentation changes grant no runtime authority and disclose no credentials or private conversation data. The owner decides the M2 data layer at the ADR checkpoint; Claude then records M2 intent under the current roles. Do not push without owner authorization.
 
 ---
 
@@ -886,3 +350,149 @@ scripts\test.cmd: last PASS 2026-11-16 (Claude 20:36, Codex 21:21 rerun); no cod
 **Decisions needed from the owner:** the open items listed above. The Grok team should ask the owner for the M2 data-layer choice directly before writing M2 code.
 
 **Next turn:** Grok (team, Implementer). Read `AGENTS.md`, `docs/agent-sync/AGENT_SYNC.md` (especially "Self-coordinating agent teams" and "Owner authorization") and this log. Get the owner's M2 data-layer decision directly, then record the M2 INTENT as one team entry. Codex reviews the team's work.
+
+---
+
+## 2026-11-16 21:50 MST | Grok (MIRA Boss, team lead) | DECISION + ROLE CHANGE + MILESTONE CLOSE
+
+**Objective:** Record the owner's decisions given directly to the Grok team, act on the two that need action now (ADR for the M2 data layer; M0-M1 archive), and leave the milestone-close summary. **Acting on a direct owner instruction** to MIRA Boss in the Grok Bot chat; the Turn line was "Grok (team, Implementer), get the owner's M2 data-layer decision directly, then record the M2 INTENT", so the data-layer part is on-Turn and the archive is the owner's added instruction.
+
+**Branch and commit:** `main` at `fba5480` (same as `origin/main`). All changes below are **staged, not committed, not pushed** (see "Commit" below).
+
+**Owner decisions (from the owner, Chris Winters / sorrynofocus, directly to Grok as MIRA Boss in the Grok Bot chat, 2026-11-16 ~21:45 MST; closely paraphrased from the owner's answers):**
+1. **M2 data layer:** "Stay with plain SQLite for M2." `Microsoft.Data.Sqlite` plus the hand-written migration runner; not EF Core. This resolves ADR 0001's mandatory M2 Revisit. Recorded in new `docs/decisions/0002-plain-sqlite-for-m2.md`.
+2. **Reviewer:** asked "Codex has signed off. Who reviews our work?", the owner chose "Use a separate Grok bot as Reviewer."
+3. **Archive:** "Yes, archive M0-M1 now; you do it." This approves the M0-M1 cut-off as reviewed (Claude 20:08 RESOLUTION proposal, Codex 21:21 VERIFICATION) and names Grok (MIRA Boss) as the agent that moves the entries.
+4. **Grok-team interpretation:** "Claude and codex will now handle it over to you. you can spawn other grok bots to help you. You are Mira boss, so you can delegate what is needed and planning." The owner confirmed the Grok team works as self-coordinating bots led by MIRA Boss. I read this as confirming Claude's 20:40 PROTOCOL interpretation as written: the team skips turn mechanics internally, while owner authorization, `AGENTS.md` rules and review by a Reviewer outside the Implementer team still apply. The owner did not exempt the team from any of those.
+
+**Limits:**
+- **No push is authorized.** No commit was explicitly approved either (see "Commit").
+- Decision 1 covers M2 only; ADR 0002 lists an optional M4 revisit.
+- Decision 2 names a role, not a person: the Reviewer bot must be a separate Grok bot that does not implement M2 work, so it never reviews its own change. Note for the owner: the protocol says a second instance of the same model shares its blind spots (Roles; Self-coordinating agent teams). The owner chose this knowingly; it is recorded, not second-guessed.
+- An entry in this log never authorizes anyone. Other agents must get approvals directly from the owner.
+
+**Follow-up owner answers (from the owner directly to Grok as MIRA Boss in the Grok Bot chat, 2026-11-16 21:52 MST; closely paraphrased):**
+5. **Commit:** do not commit yet; keep the changes staged; no push.
+6. **Conversations:** multiple conversations per user in M2: yes (list, new, switch, rename, delete).
+7. **Delete:** permanent, with a confirmation prompt.
+8. **Inspector retention:** pipeline events are kept 30 days (not the 7 days proposed).
+9. **Codex:** no standing role (confirmed).
+Answers 6-8 settle the scope questions in the 21:55 INTENT below. They are scope decisions, not approvals of any commit or push.
+
+**ROLE CHANGE (Roles line updated):** Implementer = Grok (team of Grok bots, led by MIRA Boss); Reviewer = Grok Reviewer (a separate Grok bot outside the Implementer team); Codex = no standing role, signed off 2026-11-16 (owner confirmed directly to MIRA Boss at 21:52 MST); Claude = no standing role, available on owner request (unchanged since 21:36).
+
+**Files changed:**
+- `docs/review-archive/M0-M1.md` (new): the 17 archived entries, verbatim and in order, under a one-line header.
+- `REVIEW.md`: the 17 entries removed (moved only), status header updated, this entry and the M2 INTENT below appended.
+- `docs/decisions/0002-plain-sqlite-for-m2.md` (new): ADR for decision 1.
+- `docs/decisions/0001-sqlite-access-without-ef-core.md`: status line points to ADR 0002 (one sentence added).
+- `docs/STT3_HANDOFF.md`: §6 notes the departure from EF Core with links to both ADRs; §12 says the Grok team is reviewed by a separate Grok bot.
+- `AGENTS.md`: the Grok-team rule now says the Reviewer is currently a separate Grok bot (was "currently Codex").
+
+**MILESTONE CLOSE: M0-M1**
+- **Milestones:** M0 (repository and safety baseline) and M1 (authentication and text chat streaming).
+- **Commits:** `ea200bb` (planning baseline), `9b4bbce` (M0), `89a312a` (M1). The last archived entry, Codex's 15:05 REVIEW, was committed in `dc65710`. All are on `origin/main` since the owner-directed push on 2026-11-16.
+- **Archive file:** [`docs/review-archive/M0-M1.md`](docs/review-archive/M0-M1.md).
+- **Archived (17 entries):** first "Initial handoff | ARCHITECTURE", last "2026-10-31 15:05 MST | Codex | REVIEW". This is exactly the cut-off Claude proposed (20:08 RESOLUTION) and Codex verified (21:21 VERIFICATION).
+- **Earlier entries kept live, with reasons:**
+  - "2026-10-31 | Claude | ROLE CHANGE": about Grok's Implementer seat from M2, a later milestone. It is now replaced by the 21:36 entry and this one, so it can go at M2 close; kept now under "when in doubt, keep it live".
+  - "2026-10-31 | Claude | PROTOCOL", "2026-10-31 15:31 MST | Codex | REVIEW", "2026-11-16 20:08 MST | Claude | RESOLUTION", "2026-11-16 20:40 MST | Claude | PROTOCOL", "2026-11-16 21:21 MST | Codex | VERIFICATION": protocol proposals and their reviews (keep-live rule).
+  - "2026-11-16 20:36 MST | Claude | IMPLEMENTATION": dependency security fix outside any milestone (`fba5480`), not M0-M1 work.
+  - "2026-11-16 21:36 MST | Claude | DECISION + ROLE CHANGE + COMMIT": protocol commit and push, the role change this entry builds on, and the open items this entry resolves.
+- **Decisions made in M0-M1:** ADR 0001 (direct SQLite, accepted for M1 only; now followed by ADR 0002 for M2); Astro 7.4 upgrade approved (2026-10-17); local M0 and M1 commits approved by the owner.
+- **Carry-over items (from archived entries):**
+  - *M2 data-layer decision* (from "2026-10-17 23:57 MST | Codex | QUESTION / ADVICE" and "2026-10-31 | Claude | DECISION + COMMIT"): **resolved today** by owner decision 1 (ADR 0002). Codex's advice to keep targeted SQL for M4 FTS5 still stands.
+  - *No push without the owner's direct authorization* (repeated in most archived entries): standing rule.
+  - *Browser check limits* (from "2026-10-17 23:53 MST | Codex | VERIFICATION"): the 32/32 headless Edge smoke driver is outside the repo and was not independently rerun; there has been no screen-reader or visual/layout check. Carried into the M2 test plan (manual browser and keyboard pass) and to M8 (accessibility checks).
+  - *Optional test nit* (from "2026-10-16 23:20 MST | Claude | VERIFICATION", repeated in "2026-10-17 19:43 MST | Codex | M1 INTENT"): `ApiHostTests` uses `http://0.0.0.0:5081` (`backend/Mira.Tests/ApiHostTests.cs:49-50`). If the loopback guard regressed, the API would briefly listen on the LAN during the test. Prefer a non-default loopback address. Still open; low priority, not in M2 scope unless cheap.
+  - *Known M1 limitations, documented but not findings* (from "2026-10-17 | Claude | IMPLEMENTATION", also in `docs/M1_AUTH_AND_STREAMING.md`): mock provider only (a real provider needs owner approval as a paid service); cookies not `Secure` over loopback HTTP; plain-text replies (no Markdown); in-memory login throttle; per-IP limit is effectively global behind the dev proxy; password limits count UTF-16 code units; fixed lockout window; UI Stop aborts the fetch, so the UI never sees `response.cancelled`; no CLI to disable a user; no "session ended" message after expiry. "Conversations live in memory until M2" is M2 scope.
+  - I found no other open finding: every Blocker, Major and Minor raised in M0-M1 has a resolution in a later archived entry.
+
+**Archive check (mine; the protocol's step 5 still needs a different agent):**
+```text
+diff <(git show HEAD:REVIEW.md | sed -n '45,577p') <(tail -n +3 docs/review-archive/M0-M1.md)   PASS: identical (byte-for-byte)
+diff <(git show HEAD:REVIEW.md | sed '45,580d') <REVIEW.md before appending>                     PASS: only the moved lines (and their trailing separator) removed
+grep -c '^## ' docs/review-archive/M0-M1.md                                                       17
+```
+
+**Build and tests (Linux box, not Windows; `scripts/*.cmd` are CMD-only, so I ran their commands directly in the same order as `scripts\test.cmd`):**
+```text
+dotnet --version                              10.0.404 (installed via dotnet-install.sh --channel 10.0 to ~/.dotnet)
+node --version / npm --version                v24.22.1 / 11.21.1 (meets Node >=22.23.4)
+dotnet build backend/Mira.sln -m:1            PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1  PASS: 62/62 (net10.0)
+npm --prefix frontend ci                      PASS: 0 vulnerabilities
+npm --prefix frontend test (vitest run)       PASS: 12/12 in 2 files (Vitest 5.0.5)
+npm --prefix frontend run check               PASS: 10 files, 0 errors, 0 warnings, 0 hints
+npm --prefix frontend run build               PASS: 1 page built
+npm --prefix frontend audit                   PASS: 0 vulnerabilities
+```
+No Linux-only failure. The one Linux difference seen is a harmless `VSTEST_ARTIFACTS_DIRECTORY` notice from the test SDK. This run was before any file in this change was edited; the change touches documentation only.
+
+**Commit:** Not committed; everything is staged. The protocol's "Clearing at milestone close" step 4 says the archive move and summary are committed "with the owner's approval for that commit", and the owner directly said not to commit yet (answer 5). Proposed message: `docs: archive M0-M1 review log, record M2 plain-SQLite decision (ADR 0002) and M2 intent`. No push.
+
+**Security/privacy concerns:** None. Documentation and process only; no secrets, credentials or conversation content.
+
+**Decisions needed from the owner:** When ready, approve the local commit of this staged change, directly to MIRA Boss (for example: "MIRA Boss, I approve the local archive/ADR/intent commit; no push"). The owner has said not to commit yet.
+
+**Next turn:** See the M2 INTENT entry below.
+
+---
+
+## 2026-11-16 21:55 MST | Grok (MIRA Boss, team lead) | INTENT
+
+**Objective:** Plan M2, conversation persistence and inspector (handoff §10 M2), as one Grok-team entry. This is the team's plan; inside the team, bots coordinate without log entries. No M2 code has been written.
+
+**Branch and commit:** `main` at `fba5480`, plus the staged documentation change above. M2 work will be on `main` locally (or a local `m2` branch the team merges back), uncommitted until the owner approves a commit. No push.
+
+**Scope (from handoff §10 M2, §3.2, §4.1, §6 and §7):**
+- **Build:** SQLite migrations for `Conversations`, `Messages` and `PipelineEvents`; a SQLite `IConversationStore` replacing `InMemoryConversationStore` in the host; owner-scoped conversation and message reads and writes; pipeline-event instrumentation of the chat turn; redaction; an inspector panel (hidden by default) showing a request's events and timings.
+- **Accept:** a page reload keeps completed messages (and shows interrupted ones as interrupted); request IDs correlate every event of a turn; a user cannot read, list or change another user's conversations, messages or pipeline events (404, not 403, so IDs can't be probed); the inspector shows timestamps and first-token latency without message text, credentials or tokens.
+- **Out of scope:** personas (M3), memories and FTS5 (M4), audio (M5/M6), Tavily (M7), real or paid model providers, EF Core, any agent tool or governance grant, Markdown rendering.
+
+**Data model (migrations 2 and 3, append-only; migration 1 untouched):**
+- `Conversations(Id TEXT PK, OwnerUserId TEXT NOT NULL REFERENCES Users(Id), Title TEXT NULL, CreatedAt TEXT, UpdatedAt TEXT)`, index `(OwnerUserId, UpdatedAt DESC)`. `PersonaId` waits for M3 (added by a later migration).
+- `Messages(Id TEXT PK, ConversationId TEXT NOT NULL REFERENCES Conversations(Id) ON DELETE CASCADE, Role TEXT, Content TEXT, Status TEXT, CreatedAt TEXT, ModelId TEXT NULL, RequestId TEXT NULL)`, index `(ConversationId, CreatedAt)`.
+- `PipelineEvents(Id TEXT PK, OwnerUserId TEXT NOT NULL REFERENCES Users(Id), RequestId TEXT NOT NULL, ConversationId TEXT NULL, EventType TEXT NOT NULL, ElapsedMs INTEGER NOT NULL, RedactedPayload TEXT NULL, CreatedAt TEXT)`, index `(OwnerUserId, RequestId)` and `(CreatedAt)` for the 30-day retention purge (owner answer 8).
+- Same GUID and ISO-8601 UTC formats as M1's tables. On startup, any `Messages` row still `Streaming` (left by a crash) is marked `Interrupted`.
+
+**API (additions; all under the existing `/api` group, so authentication and CSRF on unsafe methods already apply):**
+- `GET /api/conversations` (own list, bounded pagination); `POST /api/conversations` (create); `GET /api/conversations/{id}` (own conversation with messages); `PATCH /api/conversations/{id}` (title); `DELETE /api/conversations/{id}` (permanent: cascades to the conversation's messages and pipeline events; the UI asks for confirmation first). Multiple conversations per user are in scope (owner answer 6).
+- `POST /api/chat/stream` takes an optional `conversationId`; without one it keeps M1's behavior (most recent or new conversation). `GET /api/conversations/current` stays for compatibility.
+- `GET /api/diagnostics/{requestId}`: the owner's redacted events for that request, as handoff §7 proposes; plus `GET /api/diagnostics?conversationId=` for the latest requests (bounded).
+- The SSE event contract is unchanged (still schema `v: 1`); `requestId` already appears on every event.
+
+**Work breakdown (parallel chunks for separate Grok bots; one owner per file, and a bot needing a change in another chunk's file asks that chunk's owner through MIRA Boss):**
+
+| Chunk | Bot | Owns (create or edit) | Depends on |
+|---|---|---|---|
+| 0. Contracts | MIRA Boss | `backend/Mira.Core/Conversations.cs` (multi-conversation `IConversationStore`, records), new `backend/Mira.Core/PipelineEvents.cs` (`PipelineEvent`, event-type constants, `IPipelineEventStore`, `IPipelineRecorder`, redaction contract) | — (lands first, small, so A–D can start in parallel) |
+| A. SQLite storage | Storage bot | `backend/Mira.Infrastructure/Sqlite/MiraDatabase.cs` (migrations 2 and 3, startup sweep), new `Sqlite/SqliteConversationStore.cs`, new `Sqlite/SqlitePipelineEventStore.cs` (including the 30-day retention purge), `InMemoryConversationStore.cs` (updated to the new contract for tests, or removed), `backend/Mira.Tests/StoreTests.cs`, new `backend/Mira.Tests/ConversationStoreTests.cs` | 0 |
+| B. Instrumentation and redaction | Pipeline bot | new `backend/Mira.Infrastructure/Pipeline/PipelineRecorder.cs`, new `Pipeline/PipelineRedactor.cs`, new `backend/Mira.Tests/PipelineRedactionTests.cs` | 0 |
+| C. API | API bot | `backend/Mira.Api/Chat/ChatEndpoints.cs` (persistence per conversation, recorder calls at started / first token / completed / cancelled / error), `Chat/SseWriter.cs` only if needed, new `backend/Mira.Api/Conversations/ConversationEndpoints.cs`, new `backend/Mira.Api/Diagnostics/DiagnosticsEndpoints.cs`, `backend/Mira.Api/MiraHost.cs` (DI and route registration), `backend/Mira.Tests/ChatStreamTests.cs`, `backend/Mira.Tests/TestSupport.cs`, new `backend/Mira.Tests/ConversationApiTests.cs`, new `backend/Mira.Tests/DiagnosticsApiTests.cs` | 0; integrates A and B (codes against the contracts, wires real types last) |
+| D. Frontend | Frontend bot | `frontend/src/pages/index.astro` (conversation list, new-chat, rename, delete with a confirmation prompt, inspector panel hidden by default), `frontend/src/scripts/chat.ts`, `frontend/src/scripts/api.ts`, new `frontend/src/scripts/conversations.ts`, new `frontend/src/scripts/inspector.ts`, new `frontend/src/scripts/conversations.test.ts`, new `frontend/src/scripts/inspector.test.ts` | 0 and the API shapes above; uses fakes until C lands |
+| E. Docs | Docs bot | new `docs/M2_PERSISTENCE_AND_INSPECTOR.md` (schema, endpoints, event types, redaction rules, 30-day retention, permanent delete, manual test steps), `README.MD` (project status and features only) | A–D near the end |
+| — Integration | MIRA Boss | `REVIEW.md`, final full test run, the team's single IMPLEMENTATION entry | all |
+
+Untouched by M2: `Accounts.cs`, `Sessions.cs`, `Governance.cs`, auth endpoints and stores, `AGENTS.md`, `docs/agent-sync/`, `scripts/`. Bots inside the team may cross-review each other, but that is not the independent review; the Grok Reviewer bot does that.
+
+**Test plan:**
+- **Storage (A):** fresh database migrates to version 3; an M1-shaped database (version 1 with a user and a session) upgrades to version 3 with the user and session still valid; migrations are idempotent; leftover `Streaming` rows become `Interrupted`; message order is stable; delete permanently removes the conversation, its messages and its pipeline events; the retention purge removes only events older than 30 days; every store method ignores rows of another owner.
+- **Redaction (B):** the payload is built from an allowlist of fields (event type, elapsed ms, model ID, status, counts and lengths), never free text; tests feed message text, a password, a session cookie, a CSRF token and an API-key-shaped string and assert none appears in stored payloads or logs; unknown fields are dropped.
+- **API (C):** unauthenticated requests get 401; missing CSRF on POST/PATCH/DELETE gets rejected; user B gets 404 for user A's conversation, messages and request ID (`GET`, `PATCH`, `DELETE`, diagnostics, and `chat/stream` with A's `conversationId`); pagination bounds hold; a turn persists the user message and the completed assistant message, and a reload returns both; a cancelled turn persists partial text as `Interrupted`; a provider failure persists `Failed`; events for one turn share one request ID and include first-token latency; concurrent-send rule (409) still holds per user.
+- **Frontend (D):** Vitest for conversation list rendering (text only via `textContent`), switching, new chat, rename, delete only after confirmation (cancelling the prompt deletes nothing), and inspector rendering of redacted events; the existing SSE and session tests keep passing.
+- **Whole suite:** the commands in `scripts\test.cmd` (build, 62+ xUnit, Vitest, `astro check`, `astro build`), run on this Linux box and, before acceptance, on the owner's Windows machine via `scripts\test.cmd`.
+- **Manual (carry-over):** a browser and keyboard-only pass (sign in, send, Stop, reload keeps history, new, switch, rename and delete (with confirmation) conversations, open inspector, sign out). No screen-reader check is planned for M2; that stays with M8.
+
+**Security/privacy notes:**
+- The server takes the owner ID from the principal only; every query filters by owner; no lookup by bare ID; 404 for others' resources.
+- Message text is private user data at rest in `%LOCALAPPDATA%\MIRA\mira.db` (file ACLs; no encryption at rest yet, per handoff §13 item 3). Pipeline events never contain message text, prompts, credentials, cookies or tokens; logs keep M1's rule (IDs and error types only).
+- Diagnostics are owner-only and read-only. The inspector is hidden by default and renders only text.
+- No new dependency, paid service, network call or governance capability. Parameterized SQL only.
+- No real conversation data in tests, fixtures, logs, commits or this log.
+
+**Owner scope decisions (received directly by MIRA Boss, 2026-11-16 21:52 MST; recorded in the 21:50 entry above):** multiple conversations per user (list, new, switch, rename, delete); delete is permanent with a confirmation prompt; pipeline events kept 30 days, purged at startup and daily.
+
+**Decisions needed from the owner:** None for M2 scope. The staged documentation commit waits for the owner's approval (the owner said not to commit yet). M2 code commits will need their own approval after review.
+
+**Next turn:** Grok team (Implementer), implement M2 per this INTENT (chunk 0 first, then A–E in parallel), then append one IMPLEMENTATION entry for the Grok Reviewer. Side job for the Grok Reviewer bot (outside the team) meanwhile: verify the M0-M1 archive per protocol step 5 and append a VERIFICATION entry. The staged documentation change stays uncommitted until the owner approves a commit (the owner said not to commit yet).

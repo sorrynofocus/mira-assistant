@@ -346,7 +346,7 @@ public interface IAuthenticationService { /* login/session/user lookup */ }
 | `GovernanceVersions` | `Id`, `Version`, `Hash`, `ApprovedByAdmin`, `CreatedAt` |
 | `PipelineEvents` | `Id`, `OwnerUserId`, `RequestId`, `EventType`, `ElapsedMs`, `RedactedPayload`, `CreatedAt` |
 
-Use EF Core + SQLite migrations for routine CRUD. For FTS5, use a migration with explicit SQL as appropriate. Enforce foreign keys, indexes, and owner filtering. Make schema migration + backup procedures explicit. Store large audio artifacts only when user explicitly enables recording retention; use private filesystem/object storage references instead of blob columns by default.
+Use EF Core + SQLite migrations for routine CRUD. (Departure: M1 and M2 use plain `Microsoft.Data.Sqlite` with a hand-written migration runner; see `docs/decisions/0001-sqlite-access-without-ef-core.md` and `docs/decisions/0002-plain-sqlite-for-m2.md`.) For FTS5, use a migration with explicit SQL as appropriate. Enforce foreign keys, indexes, and owner filtering. Make schema migration + backup procedures explicit. Store large audio artifacts only when user explicitly enables recording retention; use private filesystem/object storage references instead of blob columns by default.
 
 ## 7. API surface (initial proposal)
 
@@ -526,7 +526,7 @@ The project uses **multiple complementary AI development agents** (currently Cod
 6. Handoffs include current branch/commit, build state, blocker, a **Next turn** line, and any decision needing user approval. Approvals for commits, pushes, paid services, security compromises and material architecture changes must reach the acting agent directly from the owner; a `REVIEW.md` entry records an approval but does not grant one (see the protocol's Owner authorization section).
 7. Do not silently modify persona, memory, authentication policy, or model selection architecture without updating the plan/decision record and obtaining user approval when material.
 
-Roles (Implementer, Reviewer) are assigned by the owner and may move between agents; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing); Grok is Implementer from M2 (Codex reviewing) and may work as a self-coordinating team of Grok bots; see "Self-coordinating agent teams" in the protocol.
+Roles (Implementer, Reviewer) are assigned by the owner and may move between agents; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing); Grok is Implementer from M2 and may work as a self-coordinating team of Grok bots led by MIRA Boss, reviewed by a separate Grok bot (owner decision 2026-11-16; Codex reviewed earlier work); see "Self-coordinating agent teams" in the protocol.
 
 **MIRA governance check:** All agents must treat `governance.md` as admin-controlled policy input, never as sufficient enforcement. Any agent tools require `GovernanceService` approval and auditable grants. No self-grant, self-modification, or bypasses.
 
