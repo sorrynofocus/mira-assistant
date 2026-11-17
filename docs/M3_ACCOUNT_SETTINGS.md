@@ -134,6 +134,8 @@ Untouched by M3: auth, sessions, conversations, diagnostics, chat endpoints and 
 
 ## 11. Backlog
 
+The live, maintained list is [`docs/TODO.md`](TODO.md); the items below are the M3 snapshot.
+
 - MIRA Dark contrast pass (bring every text and UI pair to WCAG AA; changes MIRA Dark's look, so it needs its own owner-visible change).
 - From M2: tests for another user's delete during a stream, and for the 5 s `DeleteWait` timeout when a provider ignores cancellation.
 - Preference rows on user delete: if user deletion is added, delete the user's `UserPreferences` rows along with their conversations (no cascade today).

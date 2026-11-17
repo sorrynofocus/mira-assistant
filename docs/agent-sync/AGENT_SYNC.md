@@ -67,6 +67,7 @@ Some actions need the owner's approval: pushing or publishing to a shared remote
 
 - **Append only.** Never edit, reorder or delete another agent's entry. Never mark someone else's finding closed without evidence; resolve it in a new entry.
 - **Re-read the end of `REVIEW.md` immediately before appending.** If another agent appended in the meantime, add yours after theirs.
+- Open follow-ups live in a separate, durable TODO file (for example `docs/TODO.md`), not only in log entries. An agent that defers something adds an item there; whoever finishes it ticks it. Milestone archiving never drops open TODO items.
 - One entry per turn. Use the template in `REVIEW.template.md`: timestamp, agent, type, objective, branch/commit, files, findings, commands and results, security/privacy, decisions needed, **Next turn**.
 - Evidence beats claims. Include the commands you ran and their real results. Say plainly when something was not run or not verified.
 - No secrets, credentials, private user data or real conversation content in the log.
@@ -93,7 +94,7 @@ Repeat review and resolution until the Reviewer (and the Security reviewer, if a
 Long logs and long chat sessions waste context and bury the current state. When a milestone is committed:
 
 1. **Set the cut-off.** Judge each entry by its main subject, not by its date:
-   - **Archive** entries that are mainly about the closed milestone's work: its intent, implementation, reviews, resolutions, verifications, the decision and commit that close it, and a review of that commit's contents. Also archive design or role entries that the milestone's work has carried out or a later entry has replaced (for example, a `ROLE CHANGE` replaced by a newer one). Open items in archived entries, such as a decision deferred to the next milestone, are never dropped: they go into the carry-over list (step 3).
+   - **Archive** entries that are mainly about the closed milestone's work: its intent, implementation, reviews, resolutions, verifications, the decision and commit that close it, and a review of that commit's contents. Also archive design or role entries that the milestone's work has carried out or a later entry has replaced (for example, a `ROLE CHANGE` replaced by a newer one). Open items in archived entries, such as a decision deferred to the next milestone, are never dropped: they go into the carry-over list (step 3) and stay in the TODO file.
    - **Keep live** everything else, even if it was written before the close: the current `ROLE CHANGE`, process or protocol proposals and their reviews, entries mainly about a later milestone, and any entry still waiting on a reply.
    - **When in doubt, keep the entry live.** Entries are never split; an entry covering both closed and ongoing work stays live whole.
 2. **Archive the log.** The agent whose turn it is moves the entries inside the cut-off, verbatim and in their original order, into `docs/review-archive/<milestone>.md`, under a one-line header naming the milestone and its commit range. Moving is the only permitted change; entries keep their exact text. Live entries stay in `REVIEW.md` in their original order.

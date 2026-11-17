@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 (conversation persistence and inspector) ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `4a9673f` and `cd86c7f`. **M3 (account area and settings) reviewed (MIRA Security 08:45 PASS; MIRA Reviewer 08:46, Minors resolved 08:50) and committed as one commit on top of `cd86c7f`; push approved (08:51 DECISION); status pushed-pending-owner-manual-pass once pushed.** Plan: `docs/M3_ACCOUNT_SETTINGS.md`; data layer = plain SQLite (ADR 0002)
-- **Working branch/commit:** `main` = the M3 commit on top of `cd86c7f` (1 ahead of `origin/main` = `cd86c7f`); the owner approved, directly to MIRA Boss at 08:38, pushing M3 (M3 push only; later pushes need fresh approval)
+- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 (conversation persistence and inspector) ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `4a9673f` and `cd86c7f`. **M3 (account area and settings) reviewed (MIRA Security 08:45 PASS; MIRA Reviewer 08:46, Minors resolved 08:50) and pushed as `1bface7`: pushed-pending-owner-manual-pass.** Plan: `docs/M3_ACCOUNT_SETTINGS.md`; data layer = plain SQLite (ADR 0002)
+- **Working branch/commit:** `main` = `origin/main` = `1bface7` (M3), plus a local docs commit adding `docs/TODO.md` (09:07 DECISION), not pushed; any push needs fresh, direct owner approval
 - **Last verified build:** 2026-11-17 08:49 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), with M3 and the 08:50 fixes: dotnet build --no-incremental 0 warnings/0 errors, 215/215 xUnit (twice), 51/51 Vitest, Astro check 0/0/0, build 1 page. Windows manual pass pending (another PC). Requires Node >=22.23.4
-- **Open blockers:** none. Pending: push of the M3 commit (MIRA Boss); owner's Windows manual pass for M3 (screenshots waived). Backlog (`docs/M3_ACCOUNT_SETTINGS.md` §11): MIRA Dark contrast pass; global 413 problem JSON; strict CSP and security headers; M2 tests for another user's delete and the 5 s `DeleteWait` timeout; preference rows on user delete
+- **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 Windows manual pass, roadmap numbering; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION)
 - **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M3 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
-- **Next concrete action:** MIRA Boss pushes the M3 commit to `origin main`; then the owner runs the Windows manual pass on another PC
-- **Turn:** MIRA Boss (Implementer lead), push the M3 commit to `origin main` per the 2026-11-17 08:51 DECISION, then set Turn to Owner for the Windows manual pass
+- **Next concrete action:** the owner runs the M3 Windows manual pass on another PC (screenshots waived)
+- **Turn:** Owner, M3 Windows manual pass per the 2026-11-17 08:51 DECISION (see `docs/TODO.md`)
 
 ---
 
@@ -1369,3 +1369,41 @@ npx astro check / astro build                         PASS: 0/0/0; 1 page
 **Branch and commit:** M3 is committed as one conventional commit on top of `cd86c7f` (this entry is part of it; the hash is reported outside the commit). `origin/main` confirmed at `cd86c7f` before the commit.
 
 **Next turn:** MIRA Boss (Implementer lead), push the M3 commit to `origin main` (owner-approved, M3 only), then set Turn to Owner for the Windows manual pass.
+
+---
+
+## 2026-11-17 09:04 MST | MIRA Reviewer | QUESTION / ADVICE
+
+**Objective:** Record a direct owner instruction (sorrynofocus, 09:03 MST, in the MIRA Reviewer chat): note that the two Minors from the 2026-11-17 08:46 REVIEW **are cheap**, and add a TODO.
+
+**Note:** The owner confirms both Minors were cheap (test-only bound on the retention loop; ordering of overlapping settings saves). MIRA Boss's 08:50 RESOLUTION reports both fixed before the M3 commit (`1bface7`, now on `origin/main`), with mutation checks.
+
+**TODO:**
+- [ ] MIRA Reviewer: independently verify the 08:50 RESOLUTION in `1bface7` (`backend/Mira.Tests/DiagnosticsApiTests.cs` 48 h cap plus the 7-day mutation failing; `frontend/src/scripts/settings.ts` save serialization and `settings.test.ts`). Do this when next given the Turn or at the M3 close; it does not block the owner's Windows manual pass.
+
+**Security/privacy concerns:** None.
+
+**Decisions needed from the owner:** None.
+
+**Next turn:** Owner (Windows manual pass for M3), unchanged from the 08:51 DECISION. This entry does not take the Turn.
+
+---
+
+## 2026-11-17 09:07 MST | Grok (MIRA Boss, team lead) | DECISION
+
+**Objective:** Record the owner's instruction to keep todos and follow-ups in a durable file, and the new file.
+
+**How received and limits:** The owner (sorrynofocus) asked **directly to MIRA Boss** at 09:06 MST for a `docs/TODO.md` that isolates todos and follow-ups, so they aren't lost when `REVIEW.md` gets archived. This entry records the instruction; it authorizes no push.
+
+**Branch and commit:** `main` = `origin/main` = `1bface7` (M3 pushed). This change is one local docs commit on top; not pushed.
+
+**Changes:**
+- New `docs/TODO.md`: purpose and rules, then **Owner / Next up / Backlog / Done**, each item with an owner role, a source, a size and a one-line why. Built from every open item in this log, `docs/review-archive/M0-M1.md`, the M2 docs and `docs/M3_ACCOUNT_SETTINGS.md` §9/§11, each checked against the current code. It includes the TODO from MIRA Reviewer's 09:04 QUESTION / ADVICE (independent check of the 08:50 RESOLUTION). The M0-M1 `0.0.0.0:5081` test nit is listed as **Done**: the real-process test uses `127.0.0.2:5081` and the remaining cases run in-process without a socket.
+- Rules: `AGENTS.md` (MIRA rule: follow-ups live in `docs/TODO.md`; add when deferring, tick when done, never drop on archiving) and `docs/agent-sync/AGENT_SYNC.md` (the same rule, generic). `README.MD` links the file; `docs/M3_ACCOUNT_SETTINGS.md` §11 points to it.
+- Status header: brought up to date after the M3 push (`1bface7`); the Turn stays with the Owner for the M3 Windows manual pass.
+
+**Security/privacy concerns:** None. Docs only; no secrets or user data.
+
+**Decisions needed from the owner:** see `docs/TODO.md` → Owner (M3 manual pass; roadmap numbering, since the handoff's M3 was personas).
+
+**Next turn:** Owner (Windows manual pass for M3), unchanged.

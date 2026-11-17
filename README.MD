@@ -312,7 +312,7 @@ Limits:
 
 The backend is local-only by design (loopback `127.0.0.1` only) and must not be exposed on a network yet.
 
-Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), [the M3 note](docs/M3_ACCOUNT_SETTINGS.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md).
+Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), [the M3 note](docs/M3_ACCOUNT_SETTINGS.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md); open follow-ups are tracked in [docs/TODO.md](docs/TODO.md).
 
 ## How the AI agents stay in sync
 
