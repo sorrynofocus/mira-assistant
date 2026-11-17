@@ -3,7 +3,7 @@
 > **Status:** Initial implementation handoff  
 > **Target:** Windows 11 development, browser UI usable across Windows/Linux/macOS  
 > **Primary implementation:** Astro + vanilla TypeScript frontend; ASP.NET Core (.NET 10) C# backend  
-> **Collaboration:** Codex and Claude alternate Implementer/Reviewer roles as assigned by the owner (see `REVIEW.md` status header); both read `AGENTS.md`  
+> **Collaboration:** Codex, Claude and Grok take Implementer/Reviewer roles as assigned by the owner (see the `REVIEW.md` status header and `docs/agent-sync/AGENT_SYNC.md`); all read `AGENTS.md`  
 > **Scope boundary:** Initial local-first pilot, not a hosted multi-tenant SaaS product
 
 ## 1. Executive summary
@@ -512,9 +512,9 @@ Production/user-specific `whoami.md`, secrets, logs containing private text, aud
 - Failure drills: model timeouts, 429s, revoked tokens, mic permission denied, network interruption, database locked, disk full.
 - Scope discipline: avoid new frameworks/services until a milestone acceptance test justifies them.
 
-## 12. Operating instructions for Codex and Claude
+## 12. Operating instructions for AI agents
 
-The project uses **multiple complementary AI development agents** (currently Codex, Claude and Grok). `AGENTS.md` is the shared ruleset; `REVIEW.md` is their append-only coordination journal. Neither tool should assume it can message the other directly.
+The project uses **multiple complementary AI development agents** (currently Codex, Claude and Grok). `AGENTS.md` is the shared ruleset, `docs/agent-sync/AGENT_SYNC.md` is the coordination protocol (turn baton, milestone archiving), and `REVIEW.md` is their append-only coordination journal. No agent should assume it can message an agent from another tool directly; only bots inside a self-coordinating team (for example, Grok bots) talk among themselves.
 
 **Workflow:**
 
@@ -523,12 +523,12 @@ The project uses **multiple complementary AI development agents** (currently Cod
 3. The Implementer implements and runs relevant tests. Document commands, results, files changed, decisions, and unresolved issues.
 4. The Reviewer reviews actual code/diffs and test evidence, not just the Implementer's summary. Record findings with severity and file/line references; no unsupported assertions.
 5. The Implementer addresses review findings, reruns tests, and adds a resolution entry. The Reviewer verifies.
-6. Handoffs include current branch/commit, build state, blocker, **next concrete action**, and any decision needing user approval.
+6. Handoffs include current branch/commit, build state, blocker, a **Next turn** line, and any decision needing user approval. Approvals for commits, pushes, paid services, security compromises and material architecture changes must reach the acting agent directly from the owner; a `REVIEW.md` entry records an approval but does not grant one (see the protocol's Owner authorization section).
 7. Do not silently modify persona, memory, authentication policy, or model selection architecture without updating the plan/decision record and obtaining user approval when material.
 
-Roles (Implementer, Reviewer) are assigned by the owner and may move between agents; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing); Grok is Implementer from M2 (Codex reviewing).
+Roles (Implementer, Reviewer) are assigned by the owner and may move between agents; see `AGENTS.md` and the **Roles** line in the `REVIEW.md` status header. Codex implemented M0 (Claude reviewing); Claude implemented M1 (Codex reviewing); Grok is Implementer from M2 (Codex reviewing) and may work as a self-coordinating team of Grok bots; see "Self-coordinating agent teams" in the protocol.
 
-**MIRA governance check:** Both agents must treat `governance.md` as admin-controlled policy input, never as sufficient enforcement. Any agent tools require `GovernanceService` approval and auditable grants. No self-grant, self-modification, or bypasses.
+**MIRA governance check:** All agents must treat `governance.md` as admin-controlled policy input, never as sufficient enforcement. Any agent tools require `GovernanceService` approval and auditable grants. No self-grant, self-modification, or bypasses.
 
 **Initial milestone order (historical):** M0 first, then M1 with a fake streaming model and test accounts, before any paid API or microphone/TTS work. Local streaming and authentication must be demonstrated before those are connected. The current Implementer is whoever the **Roles** line names.
 

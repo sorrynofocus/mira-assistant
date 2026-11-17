@@ -63,7 +63,18 @@ scripts\create-user.cmd <your-name>
 scripts\dev.cmd
 ```
 
-`create-user.cmd` asks for your password twice; nothing is echoed while you type.
+What each line does:
+
+| Command | What it does |
+| --- | --- |
+| `git clone …` | Downloads the repository into a new `mira-assistant` folder. |
+| `cd mira-assistant` | Moves into that folder. Run every later command from here. |
+| `npm --prefix frontend ci` | Installs the frontend's packages (Astro, Vitest, TypeScript) into `frontend\node_modules`. `--prefix frontend` runs npm in the `frontend` folder; `ci` is a clean install of the exact versions in `frontend\package-lock.json`. It ends with an install summary. A "vulnerabilities" or "funding" notice there is information, not an error. |
+| `scripts\test.cmd` | Builds the C# backend, runs the backend tests (xUnit) and frontend tests (Vitest), type-checks the frontend and builds the site. It stops at the first failure; success ends with `All checks passed.` |
+| `scripts\create-user.cmd <your-name>` | Creates your local sign-in account in the SQLite database (`%LOCALAPPDATA%\MIRA\mira.db`). It asks for your password twice; nothing is echoed while you type. There are no default accounts. |
+| `scripts\dev.cmd` | Starts MIRA: it opens two windows, one for the API (`http://127.0.0.1:5080`) and one for the web page (`http://127.0.0.1:4321`). Close both windows to stop. |
+
+You only need `git clone`, `npm --prefix frontend ci` and `create-user` once. After that, `scripts\dev.cmd` is all it takes to run MIRA. Rerun `npm --prefix frontend ci` when `frontend\package-lock.json` changes.
 
 Then open <http://127.0.0.1:4321/> in your browser and sign in with that account. The header should say **API online**.
 
@@ -95,7 +106,7 @@ MIRA is currently at milestone **M1**: local sign-in plus a streamed text chat a
 You need:
 
 - **.NET 10 SDK** (`winget install --id Microsoft.DotNet.SDK.10 -e`, or download from <https://dotnet.microsoft.com/download/dotnet/10.0>)
-- **Node.js 22.22 or newer** with npm 9.6.5 or newer (the minimums required by Astro 7.4). The current LTS works: `winget install --id OpenJS.NodeJS.LTS -e`, or download from <https://nodejs.org/>.
+- **Node.js 22.23.4 or newer** with npm 9.6.5 or newer (the minimums required by Astro 7.4.12, the patched release). The current LTS works: `winget install --id OpenJS.NodeJS.LTS -e`, or download from <https://nodejs.org/>.
 - **Git** (`winget install --id Git.Git -e`, or download from <https://git-scm.com/download/win>)
 
 Open a **new** CMD window after installing, then verify:
@@ -107,7 +118,7 @@ npm --version
 git --version
 ```
 
-`dotnet --version` should print `10.x.x`. `node --version` should print `v22.22.0` or later.
+`dotnet --version` should print `10.x.x`. `node --version` should print `v22.23.4` or later.
 
 ### 2. Get the source
 
@@ -269,7 +280,8 @@ Limits:
 | --- | --- |
 | `'dotnet'`, `'node'`, `'npm'`, or `'git'` is not recognized | The install did not update this window's `PATH`. Open a new CMD window (or sign out and back in) and re-run the version checks. |
 | `dotnet --version` shows an older version, or the build reports it cannot find .NET 10 | Install the .NET 10 SDK (see prerequisites), open a new window, and confirm `dotnet --version` prints `10.x.x`. |
-| `npm ci` or `astro` reports an unsupported Node.js version | Install Node.js 22.22 or newer, open a new window, and confirm with `node --version`. |
+| `npm ci` or `astro` reports an unsupported Node.js version (`EBADENGINE`, or `Node.js vX is not supported by Astro!`) | Install Node.js 22.23.4 or newer (for example `winget upgrade --id OpenJS.NodeJS.22 -e`), open a new window, and confirm with `node --version`. |
+| `npm ci` ends with `N moderate severity vulnerabilities` | Not an error; the install succeeded. Run `npm --prefix frontend audit` to see the details. Updating dependencies changes `package-lock.json`, so it goes through the normal implement-and-review cycle. |
 | `scripts\dev.cmd` prints `Install frontend dependencies with: npm --prefix frontend ci` | Run `npm --prefix frontend ci` from the repository root, then run `scripts\dev.cmd` again. |
 | Page says **API unavailable**, or the sign-in form says `MIRA is unreachable. Start the API, then reload this page.` | Check that the **MIRA API** window is open and has finished starting (no error shown), then press **Check again** or reload. Confirm with `curl http://127.0.0.1:5080/health/live`. |
 | Sign-in says `Invalid username or password.` | The username or password is wrong, or the account is disabled. The message is the same in every case by design, so it does not reveal which accounts exist. Check that you created the account (`scripts\create-user.cmd`) against the same database the API uses. |
@@ -291,3 +303,15 @@ Limits:
 The backend is local-only by design (loopback `127.0.0.1` only) and must not be exposed on a network yet.
 
 Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md).
+
+## How the AI agents stay in sync
+
+MIRA is built by several AI coding agents working with one human owner: Codex, Claude and Grok, in roles the owner assigns. Agents from different tools can't message each other (a team of Grok bots talks among itself, see below), so they coordinate through files in this repository using the **[Agent Sync Protocol](docs/agent-sync/AGENT_SYNC.md)**:
+
+- **One shared log.** [`REVIEW.md`](REVIEW.md) is append-only. Every agent records what it did, the evidence (commands and test results) and its findings there.
+- **A turn baton.** Each entry ends with **Next turn:**, naming which agent acts next and what it should do, and the status header shows the current **Turn**. The owner only has to tell the next agent one line, such as *"Codex reviewed — your turn"*. The agent reads the log and picks up from there. Nobody copies responses between tools. The baton only schedules work: approvals for commits, pushes and other sensitive steps come from the owner directly, never from the log.
+- **Different agents implement and review.** An agent never reviews its own change. The M0 loopback-binding bug and the M1 sign-out bug were both caught this way.
+- **Agent teams run themselves.** Grok can work as a team of Grok bots that pass work between themselves automatically, so they skip the turn baton among themselves. The team holds the Turn while it works, writes one summary entry when it's done, and its work still goes to an outside reviewer.
+- **A clean slate per milestone.** When a milestone is committed, its log entries move to `docs/review-archive/`, a short summary carries open items forward, and each agent starts a fresh session. The repository, not any agent's chat memory, holds the state.
+
+The protocol is project-independent. Copy [`docs/agent-sync/`](docs/agent-sync/) into another repository and use its `REVIEW.template.md` and `AGENTS.template.md` to start.
