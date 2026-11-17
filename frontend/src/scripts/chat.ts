@@ -9,6 +9,7 @@ import {
   type ConversationSnapshot,
   type MessageStatus,
   type ChatRole,
+  type UserPreferences,
 } from './api';
 import {
   ConversationWorkspace,
@@ -21,7 +22,19 @@ import {
   syncLoadMoreButton,
 } from './conversations';
 import { InspectorController, liveInspectorClient, renderRequestLink } from './inspector';
-import { signOut } from './session';
+import {
+  SettingsController,
+  clearAccountArea,
+  closeSettingsDialog,
+  handleDialogKeydown,
+  openSettingsDialog,
+  renderAccountArea,
+  showSettingsAlert,
+  signOutFromSettings,
+  syncSettingsControls,
+  type SettingsDialogElement,
+} from './settings';
+import { applyPreferences, isFontSizeValue, isThemeValue } from './theme';
 import { readSse, type ChatEnvelope } from './sse';
 
 interface User {
@@ -49,8 +62,13 @@ const loginButton = byId<HTMLButtonElement>('login-button');
 const loginError = byId<HTMLElement>('login-error');
 
 const chatView = byId<HTMLElement>('chat-view');
-const whoami = byId<HTMLElement>('whoami');
-const logoutButton = byId<HTMLButtonElement>('logout-button');
+const accountAvatar = byId<HTMLElement>('account-avatar');
+const accountUsername = byId<HTMLElement>('account-username');
+const accountSettings = byId<HTMLButtonElement>('account-settings');
+const settingsDialog = byId<HTMLDialogElement>('settings-dialog');
+const settingsError = byId<HTMLElement>('settings-error');
+const settingsClose = byId<HTMLButtonElement>('settings-close');
+const settingsSignOut = byId<HTMLButtonElement>('settings-sign-out');
 const workspaceBody = byId<HTMLElement>('workspace-body');
 const conversationList = byId<HTMLUListElement>('conversation-list');
 const conversationEmpty = byId<HTMLElement>('conversation-empty');
@@ -92,6 +110,9 @@ const inspector = new InspectorController(
   announce,
 );
 
+const settings = new SettingsController();
+applyPreferences(settings.current);
+
 function showError(target: HTMLElement, message: string | null): void {
   target.textContent = message ?? '';
   target.hidden = !message;
@@ -105,6 +126,13 @@ function showLogin(message: string | null = null): void {
   stop();
   setInspectorOpen(false);
   inspector.reset();
+  if (settingsDialog.open) closeSettingsDialog(settingsDialog);
+  clearAccountArea(accountAvatar, accountUsername);
+  settings.clearMemory();
+  workspace.list = [];
+  workspace.selected = null;
+  workspace.renamingId = null;
+  workspace.hasMore = false;
   chatView.hidden = true;
   loginView.hidden = false;
   visibleConversationId = null;
@@ -112,6 +140,7 @@ function showLogin(message: string | null = null): void {
   conversationList.replaceChildren();
   showError(loginError, message);
   showError(chatError, null);
+  showSettingsAlert(settingsError, null);
   passwordInput.value = '';
   (usernameInput.value ? passwordInput : usernameInput).focus();
 }
@@ -119,8 +148,17 @@ function showLogin(message: string | null = null): void {
 async function showChat(user: User): Promise<void> {
   loginView.hidden = true;
   chatView.hidden = false;
-  whoami.textContent = user.username;
+  renderAccountArea(user.username, accountAvatar, accountUsername);
   showError(chatError, null);
+  try {
+    await settings.loadFromServer();
+    setInspectorOpen(settings.current.inspectorOpenByDefault);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      showLogin('Your session ended. Sign in again.');
+      return;
+    }
+  }
   try {
     await workspace.boot();
   } catch (error) {
@@ -391,22 +429,69 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-logoutButton.addEventListener('click', async () => {
+accountSettings.addEventListener('click', () => {
+  syncSettingsControls(settingsDialog, settings.current);
+  showSettingsAlert(settingsError, null);
+  openSettingsDialog(settingsDialog as SettingsDialogElement, accountSettings);
+});
+
+settingsDialog.addEventListener('keydown', (event) => {
+  handleDialogKeydown(event, settingsDialog, () => closeSettingsDialog(settingsDialog), document.activeElement);
+});
+
+settingsClose.addEventListener('click', () => {
+  closeSettingsDialog(settingsDialog);
+});
+
+settingsDialog.addEventListener('change', (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  if (target.name === 'theme' && isThemeValue(target.value)) {
+    void savePreference({ theme: target.value });
+  } else if (target.name === 'fontSize' && isFontSizeValue(target.value)) {
+    void savePreference({ fontSize: target.value });
+  } else if (target.id === 'settings-inspector-default') {
+    void savePreference({ inspectorOpenByDefault: target.checked });
+  }
+});
+
+settingsSignOut.addEventListener('click', () => {
+  void handleSignOut();
+});
+
+async function savePreference(update: Partial<UserPreferences>): Promise<void> {
+  const previousInspectorOpen = inspector.open;
+  if (update.inspectorOpenByDefault !== undefined) {
+    setInspectorOpen(update.inspectorOpenByDefault);
+  }
+  const ok = await settings.change(update, {
+    showError: (message) => showSettingsAlert(settingsError, message),
+    announce,
+    sync: (preferences) => syncSettingsControls(settingsDialog, preferences),
+  });
+  if (!ok && update.inspectorOpenByDefault !== undefined) {
+    setInspectorOpen(previousInspectorOpen);
+  }
+}
+
+async function handleSignOut(): Promise<void> {
   stop();
-  logoutButton.disabled = true;
+  settingsSignOut.disabled = true;
   showError(chatError, null);
+  showSettingsAlert(settingsError, null);
   try {
-    const result = await signOut();
+    const result = await signOutFromSettings();
     if (result.signedOut) {
+      closeSettingsDialog(settingsDialog);
       showLogin();
     } else {
-      showError(chatError, result.message);
+      showSettingsAlert(settingsError, result.message);
       announcer.textContent = result.message;
     }
   } finally {
-    logoutButton.disabled = false;
+    settingsSignOut.disabled = false;
   }
-});
+}
 
 newChatButton.addEventListener('click', () => {
   void runWorkspaceAction(async () => {

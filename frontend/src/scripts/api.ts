@@ -19,6 +19,17 @@ export const CONVERSATION_LIMITS = {
   maxPageSize: 100,
 } as const;
 
+export type ThemePreference = 'mira-dark' | 'sovereign' | 'system';
+export type FontSizePreference = 'small' | 'default' | 'large';
+
+export interface UserPreferences {
+  theme: ThemePreference;
+  fontSize: FontSizePreference;
+  inspectorOpenByDefault: boolean;
+}
+
+export type Preferences = UserPreferences;
+
 export type ChatRole = 'user' | 'assistant';
 export type MessageStatus = 'streaming' | 'completed' | 'interrupted' | 'failed';
 
@@ -185,6 +196,20 @@ export async function patchJson<T>(path: string, body: unknown): Promise<T | und
   return readJson<T>(response);
 }
 
+export async function putJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await mutate('PUT', path, body);
+  if (!response.ok) throw await toError(response);
+  return (await readJson<T>(response)) as T;
+}
+
+export async function getPreferences(): Promise<UserPreferences> {
+  return getJson<UserPreferences>('/api/me/preferences');
+}
+
+export async function updatePreferences(update: Partial<UserPreferences>): Promise<UserPreferences> {
+  return putJson<UserPreferences>('/api/me/preferences', update);
+}
+
 export async function deleteRequest(path: string): Promise<void> {
   const response = await mutate('DELETE', path);
   if (!response.ok) throw await toError(response);
@@ -198,7 +223,7 @@ export async function postStream(path: string, body: unknown, signal: AbortSigna
   return response;
 }
 
-function mutate(method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
+function mutate(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken;

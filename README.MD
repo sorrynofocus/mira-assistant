@@ -35,7 +35,7 @@ MIRA is STT 3.0. It grew out of the owner's earlier speech-to-text assistant and
 
 ### Status
 
-M0 (the local baseline) and M1 (local sign-in plus streamed chat against a mock model, with no paid AI connected) are done. M2 (conversation persistence and a redacted pipeline inspector, on plain SQLite per [ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)) is implemented in this tree; details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). Personas, memory, voice, and web search come in later milestones. The full roadmap is in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
+M0 (the local baseline) and M1 (local sign-in plus streamed chat against a mock model, with no paid AI connected) are done. M2 (conversation persistence and a redacted pipeline inspector, on plain SQLite per [ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)) is done; details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M3 (an account area and per-user settings: themes, font size, inspector default) is implemented in this tree and in review; see [the M3 account and settings note](docs/M3_ACCOUNT_SETTINGS.md). Personas, memory, voice, and web search come in later milestones. The full roadmap is in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
 
 
 ---
@@ -82,18 +82,18 @@ Then open <http://127.0.0.1:4321/> in your browser and sign in with that account
 
 ### What the pieces are
 
-MIRA is currently at milestone **M2** (implemented, in review): local sign-in, a streamed text chat against a mock model, saved conversations (several per user), and a redacted pipeline inspector. Persona editing, memory, voice, and web search come in later milestones.
+MIRA is currently at milestone **M3** (implemented, in review): local sign-in, a streamed text chat against a mock model, saved conversations (several per user), a redacted pipeline inspector, and per-user settings (theme, font size, inspector default). Persona editing, memory, voice, and web search come in later milestones.
 
 - **Frontend: [Astro](https://astro.build/).** Builds a static web page. The page logic is plain (vanilla) TypeScript, with no React/Vue/Svelte. It runs on Node.js.
 - **Backend: ASP.NET Core Minimal API.** A small C# web server on .NET 10. It exposes `GET /health/live` (returns `{"status":"ok"}`), local username/password sign-in, a streaming chat endpoint, conversation endpoints, and read-only diagnostics for the inspector. Everything under `/api` requires a signed-in user except the sign-in and CSRF-token endpoints.
 - **Local database: SQLite.** Accounts, sessions, conversations, messages and inspector timing events are stored in a SQLite file outside the repository (`%LOCALAPPDATA%\MIRA\mira.db` by default). Inspector events never contain message text and are deleted after 30 days.
 - **Mock model providers.** Chat, transcription, and speech are behind replaceable interfaces. M1 uses only deterministic mocks, so you do not need Azure keys or any paid service.
-- **Tests: xUnit and Vitest.** .NET unit and integration tests for configuration, authentication, sessions, CSRF, streaming, storage, governance, and the API host; Vitest tests for the frontend stream parser, sign-out, conversation list and inspector.
+- **Tests: xUnit and Vitest.** .NET unit and integration tests for configuration, authentication, sessions, CSRF, streaming, storage, governance, and the API host; Vitest tests for the frontend stream parser, sign-out, conversation list, inspector, themes and settings.
 
 | Folder | What it contains |
 | --- | --- |
-| `frontend/` | Astro static web UI (vanilla TypeScript): sign-in form, chat view, conversation list, inspector panel, stream parser |
-| `backend/Mira.Api/` | ASP.NET Core Minimal API host: health, auth, chat streaming, conversations, diagnostics, inspector-event retention, CSRF/origin checks, loopback binding policy, `create-user` command |
+| `frontend/` | Astro static web UI (vanilla TypeScript): sign-in form, chat view, conversation list, inspector panel, account area and Settings dialog, themes (`public/theme-init.js` applies the saved theme before first paint), stream parser |
+| `backend/Mira.Api/` | ASP.NET Core Minimal API host: health, auth, chat streaming, conversations, diagnostics, user preferences, inspector-event retention, CSRF/origin checks, loopback binding policy, `create-user` command |
 | `backend/Mira.Core/` | Contracts and options: provider, account, session, conversation, pipeline-event, and governance interfaces; `Mira` settings |
 | `backend/Mira.Infrastructure/` | Implementations: SQLite accounts/sessions/audit log, conversations and pipeline events; pipeline redactor and recorder; mock providers; deny-all governance |
 | `backend/Mira.Tests/` | xUnit tests |
@@ -200,7 +200,13 @@ The page shows a **Sign in** form. After you sign in it shows the chat:
 - **Enter** sends, **Shift+Enter** adds a new line.
 - While MIRA is responding, the **Stop** button or **Esc** cancels the response. The partial reply is kept and marked **Stopped**.
 - Responses come from a mock model that echoes your message. No paid API is called.
-- **Sign out** ends the session on the server. If MIRA can't confirm that (for example, the API has stopped), you stay signed in and see an error. Try again once the API is running.
+- **Your account** is in the lower-left corner: your initial, your username and a **gear** button that opens **Settings** (a dialog you can use with the keyboard; **Esc** closes it).
+- **Settings** (saved per user on the server):
+  - **Theme:** **MIRA Dark** (the default), **Sovereign** (black and white, high contrast) or **Match system** (follows your OS light/dark setting: dark gives MIRA Dark, light gives Sovereign, and it switches live).
+  - **Font size:** small, default or large.
+  - **Open the inspector by default:** whether the inspector panel opens when you sign in. The **Show inspector** button still toggles it for the current session without changing this setting.
+  - The page remembers your theme and font size in the browser, so it opens in the right look without a flash. Nothing else is cached.
+- **Sign out** is in Settings. It ends the session on the server. If MIRA can't confirm that (for example, the API has stopped), you stay signed in and see an error. Try again once the API is running.
 
 To check the API directly (`curl` ships with Windows 10 and later):
 
@@ -298,13 +304,15 @@ Limits:
 
 ## Project status and docs
 
-**M2 is implemented** in this tree: multiple conversations per user are stored in SQLite, a page reload keeps history, and a hidden-by-default inspector shows redacted pipeline events and timings. Details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M2 uses plain SQLite ([ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)), not EF Core.
+**M3 is implemented** in this tree and in review: a lower-left account area, a Settings dialog, three theme choices (MIRA Dark, Sovereign, Match system), font size and an inspector default, saved per user (`GET`/`PUT /api/me/preferences`). Details are in [the M3 account and settings note](docs/M3_ACCOUNT_SETTINGS.md).
+
+**M2 is done** (accepted 2026-11-17): multiple conversations per user are stored in SQLite, a page reload keeps history, and a hidden-by-default inspector shows redacted pipeline events and timings. Details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M2 uses plain SQLite ([ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)), not EF Core.
 
 **M1** (local authentication and mock streamed chat) and **M0** (the local baseline) remain the foundation; see [the M1 authentication and streaming note](docs/M1_AUTH_AND_STREAMING.md) and [the M0 architecture note](docs/M0_ARCHITECTURE.md). Persona editing, memory, voice, and web search are still scheduled in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
 
 The backend is local-only by design (loopback `127.0.0.1` only) and must not be exposed on a network yet.
 
-Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md).
+Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), [the M3 note](docs/M3_ACCOUNT_SETTINGS.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md).
 
 ## How the AI agents stay in sync
 

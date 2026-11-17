@@ -248,13 +248,13 @@ public sealed class SqliteConversationStoreTests : ConversationStoreContractTest
     }
 
     [Fact]
-    public async Task FreshDatabaseIsAtVersionThreeAndMigrationsAreIdempotent()
+    public async Task FreshDatabaseIsAtTheLatestVersionAndMigrationsAreIdempotent()
     {
-        Assert.Equal(3, MiraDatabase.LatestVersion);
+        Assert.Equal(4, MiraDatabase.LatestVersion);
         await _database.MigrateAsync();
         await _database.MigrateAsync();
         await using var connection = await _database.OpenAsync();
-        Assert.Equal(3, await MiraDatabase.GetVersionAsync(connection));
+        Assert.Equal(MiraDatabase.LatestVersion, await MiraDatabase.GetVersionAsync(connection));
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('Conversations', 'Messages', 'PipelineEvents');";
         Assert.Equal(3L, await command.ExecuteScalarAsync());
@@ -279,7 +279,7 @@ public sealed class SqliteConversationStoreTests : ConversationStoreContractTest
 
         await using (var connection = await database.OpenAsync())
         {
-            Assert.Equal(3, await MiraDatabase.GetVersionAsync(connection));
+            Assert.Equal(MiraDatabase.LatestVersion, await MiraDatabase.GetVersionAsync(connection));
         }
 
         Assert.NotNull(await accounts.VerifyCredentialsAsync("m1-owner", "an m1 era fixture password"));

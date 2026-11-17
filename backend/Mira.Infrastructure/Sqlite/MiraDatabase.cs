@@ -77,6 +77,17 @@ public sealed class MiraDatabase
             );
             CREATE INDEX IX_PipelineEvents_Owner_RequestId ON PipelineEvents(OwnerUserId, RequestId);
             CREATE INDEX IX_PipelineEvents_CreatedAt ON PipelineEvents(CreatedAt);
+            """),
+        // M3: per-user preferences as key/value rows (only allowlisted keys and values are written; a missing row = default).
+        // The length CHECKs are a backstop to the allowlist (MIRA Security 2026-11-17, nit 2).
+        (4, """
+            CREATE TABLE UserPreferences (
+                OwnerUserId TEXT NOT NULL REFERENCES Users(Id),
+                Key TEXT NOT NULL CHECK (length(Key) <= 64),
+                Value TEXT NOT NULL CHECK (length(Value) <= 64),
+                UpdatedAt TEXT NOT NULL,
+                PRIMARY KEY (OwnerUserId, Key)
+            ) WITHOUT ROWID;
             """)
     ];
 

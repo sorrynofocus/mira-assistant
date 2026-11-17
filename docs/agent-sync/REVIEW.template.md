@@ -16,7 +16,7 @@
 
 ## YYYY-MM-DD HH:MM TZ | AGENT | TYPE
 
-<!-- TYPE: INTENT, IMPLEMENTATION, REVIEW, RESOLUTION, VERIFICATION, QUESTION / ADVICE, DECISION, ROLE CHANGE, MILESTONE CLOSE. If acting on a direct owner instruction that overrides the Turn line, say so in Objective. A DECISION entry states how the approval was received and its limits. -->
+<!-- TYPE: INTENT, IMPLEMENTATION, REVIEW, RESOLUTION, VERIFICATION, QUESTION / ADVICE, DECISION, ROLE CHANGE, MILESTONE CLOSE, SECURITY REVIEW. If acting on a direct owner instruction that overrides the Turn line, say so in Objective. A DECISION entry states how the approval was received and its limits. -->
 
 **Objective:**
 

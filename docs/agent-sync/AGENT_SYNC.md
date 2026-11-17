@@ -23,6 +23,7 @@ The owner assigns roles and may change them at any time. The current assignment 
 
 - **Implementer:** plans one bounded unit of work, records intent, changes code, runs tests, records evidence, and resolves review findings.
 - **Reviewer:** inspects the actual diffs and reruns the tests rather than trusting the summary, then reports findings with severity and file/line references. Changes code only if the owner explicitly asks, and that change then goes to a different agent for review.
+- **Security reviewer (optional):** threat-models each milestone plan (the `INTENT`) before implementation starts, and security-reviews the implementation before the milestone is accepted, alongside the Reviewer. Reports with the same severity scale in `SECURITY REVIEW` entries. Like the Reviewer, it changes code only if the owner explicitly asks and never reviews its own change.
 - **Helper (optional):** extra agents or sub-agents for side jobs (docs, research, test specs) on files the Implementer isn't editing.
 - **No standing role:** acts only on a direct owner instruction (see rule 4 of the turn baton).
 
@@ -69,7 +70,7 @@ Some actions need the owner's approval: pushing or publishing to a shared remote
 - One entry per turn. Use the template in `REVIEW.template.md`: timestamp, agent, type, objective, branch/commit, files, findings, commands and results, security/privacy, decisions needed, **Next turn**.
 - Evidence beats claims. Include the commands you ran and their real results. Say plainly when something was not run or not verified.
 - No secrets, credentials, private user data or real conversation content in the log.
-- Entry types: `INTENT`, `IMPLEMENTATION`, `REVIEW`, `RESOLUTION`, `VERIFICATION`, `QUESTION / ADVICE`, `DECISION`, `ROLE CHANGE`, `MILESTONE CLOSE`.
+- Entry types: `INTENT`, `IMPLEMENTATION`, `REVIEW`, `RESOLUTION`, `VERIFICATION`, `QUESTION / ADVICE`, `DECISION`, `ROLE CHANGE`, `MILESTONE CLOSE`, and `SECURITY REVIEW` (when the project has a Security reviewer).
 
 ## A milestone cycle
 
@@ -83,7 +84,9 @@ That agent:  records the DECISION, commits locally
 Implementer: MILESTONE CLOSE (archive + clear) ─▶ Reviewer confirms the archive ─▶ (Next turn: whoever starts the next milestone)
 ```
 
-Repeat review and resolution until the Reviewer reports no open Blocker or Major finding. Commit and push only with the owner's approval given directly to the committing agent (see [Owner authorization](#owner-authorization)).
+With a Security reviewer, two steps are added: after the `INTENT`, it appends a `SECURITY REVIEW` (plan threat model) before implementation starts; after the `IMPLEMENTATION`, it security-reviews the code alongside the Reviewer, and the `RESOLUTION` and verification cover its findings too.
+
+Repeat review and resolution until the Reviewer (and the Security reviewer, if any) reports no open Blocker or Major finding. Commit and push only with the owner's approval given directly to the committing agent (see [Owner authorization](#owner-authorization)).
 
 ## Clearing at milestone close
 

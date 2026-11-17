@@ -14,8 +14,10 @@ This project uses the **Agent Sync Protocol** (`docs/agent-sync/AGENT_SYNC.md`).
 ## Project-specific working rules
 - Current agents: Codex, Claude and Grok. Each may run sub-agents for routine documents (architecture notes, README, learning docs) after checking the file isn't being written by someone else.
 - Grok may work as a team of Grok bots. The bots coordinate among themselves automatically, so the team skips the protocol's turn mechanics internally (see "Self-coordinating agent teams" in the protocol). Because Codex and Claude share this repository, the team still holds the Turn line while it works, appends one summary entry when it finishes or needs a decision, and has its work reviewed by the Reviewer (currently a separate Grok bot outside the Implementer team; see the Roles line). Every bot follows the rules in this file.
+- Security reviewer: **MIRA Security**, a Grok bot (owner decision 2026-11-17). It threat-models each milestone plan before implementation starts and security-reviews the implementation before acceptance, alongside the Reviewer, in `SECURITY REVIEW` entries in `REVIEW.md`. Open Blocker or Major security findings block acceptance like the Reviewer's.
 - Seek owner approval for material architectural changes, security compromises, persistent persona edits, new paid services, and any push to GitHub. These extend the protocol's Owner authorization list: the approval must reach the acting agent directly from the owner, and a `REVIEW.md` entry only records it.
 - Never paste real secrets or private user messages in `REVIEW.md`, issue logs, or commits.
+- Credit AI contributors in commit messages with a `Co-Authored-By:` trailer at the bottom, one line per agent that materially wrote or reviewed the change, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Grok team bots use `Co-Authored-By: <bot name> (Grok Bot) <noreply@x.ai>`, e.g. `Co-Authored-By: MIRA Boss (Grok Bot) <noreply@x.ai>`.
 
 ## Technology constraints
 - Frontend: Astro static + vanilla TypeScript; do not introduce React/Vue/Svelte or Blazor without approval.

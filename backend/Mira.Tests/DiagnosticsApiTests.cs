@@ -131,15 +131,28 @@ public sealed class DiagnosticsApiTests
         var store = new InMemoryPipelineEventStore();
         var owner = Guid.NewGuid();
         await store.AppendAsync(Event(owner, "old", time.GetUtcNow() - TimeSpan.FromDays(31)));
-        await store.AppendAsync(Event(owner, "recent", time.GetUtcNow() - TimeSpan.FromDays(29)));
+        await store.AppendAsync(Event(owner, "recent", time.GetUtcNow() - TimeSpan.FromDays(29.5)));
         using var service = new PipelineRetentionService(store, time, NullLogger<PipelineRetentionService>.Instance);
 
         await service.StartAsync(CancellationToken.None); // first purge runs at startup
         await WaitUntilAsync(async () => (await store.GetByRequestAsync(owner, "old")).Count == 0);
         Assert.Single(await store.GetByRequestAsync(owner, "recent"));
 
-        time.Advance(TimeSpan.FromDays(1.5)); // "recent" is now 30.5 days old; the daily purge removes it
-        await WaitUntilAsync(async () => (await store.GetByRequestAsync(owner, "recent")).Count == 0);
+        // Advance in 6 h steps, capped at 48 h in total, until the daily purge removes "recent" (30.5 days old after 24 h).
+        // Stepping avoids a race: a single Advance could run before the service registers its next Task.Delay on the fake
+        // clock, and that delay would never fire. The cap keeps the test guarding the 24 h interval (a weekly purge fails).
+        var advanced = TimeSpan.Zero;
+        await WaitUntilAsync(async () =>
+        {
+            if (advanced < TimeSpan.FromHours(48))
+            {
+                time.Advance(TimeSpan.FromHours(6));
+                advanced += TimeSpan.FromHours(6);
+            }
+
+            return (await store.GetByRequestAsync(owner, "recent")).Count == 0;
+        });
+        Assert.True(advanced <= TimeSpan.FromHours(48));
 
         await service.StopAsync(CancellationToken.None);
     }

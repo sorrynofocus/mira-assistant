@@ -10,6 +10,7 @@ using Mira.Api.Auth;
 using Mira.Api.Chat;
 using Mira.Api.Conversations;
 using Mira.Api.Diagnostics;
+using Mira.Api.Preferences;
 using Mira.Api.Security;
 using Mira.Core;
 using Mira.Infrastructure;
@@ -58,6 +59,7 @@ public static class MiraHost
         services.Configure<KestrelServerOptions>(kestrel => kestrel.AddServerHeader = false);
 
         services.AddSingleton<IConversationStore, SqliteConversationStore>();
+        services.AddSingleton<IUserPreferenceStore, SqliteUserPreferenceStore>();
         services.AddSingleton<IChatProvider>(sp =>
             new MockChatProvider(TimeSpan.FromMilliseconds(sp.GetRequiredService<MiraOptions>().Chat.MockDelayMilliseconds)));
 
@@ -145,6 +147,7 @@ public static class MiraHost
         api.MapChatEndpoints();
         api.MapConversationEndpoints();
         api.MapDiagnosticsEndpoints();
+        api.MapPreferenceEndpoints();
     }
 
     // API startup only (not create-user): apply migrations, then mark messages left Streaming by a crash as Interrupted.

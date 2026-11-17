@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived (`216aa86`; archive VERIFICATION PASS, MIRA Reviewer 21:58). M2 (conversation persistence and inspector) implemented and verified (22:34 and 23:06 VERIFICATION PASS), committed locally as one commit on top of `216aa86` (23:10 DECISION); not accepted until the Windows manual browser/keyboard pass; data layer = plain SQLite (ADR 0002)
-- **Working branch/commit:** `main` = the M2 commit on top of `216aa86` (local, 2 ahead of `origin/main` = `fba5480`); owner approved, directly to MIRA Boss at 23:04, committing M2 and pushing to `origin main` (this push only; later pushes need fresh approval)
-- **Last verified build:** 2026-11-16 23:10 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), `scripts\test.cmd` steps run directly with M2 + review fixes: npm ci 0 vulnerabilities, 36/36 Vitest, Astro check 0/0/0, build 1 page, dotnet build --no-incremental 0 warnings/0 errors, 140/140 xUnit. Windows not yet rerun with M2. Requires Node >=22.23.4
-- **Open blockers:** none. Pending: the owner-approved push of M2 to `origin main` (MIRA Boss); Windows manual browser/keyboard pass before M2 acceptance; deferred Minor: tests for a cross-user delete during a stream and for the provider-ignores-cancel 5 s timeout
-- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
-- **Next concrete action:** MIRA Boss pushes the M2 commit to `origin main` (owner-approved, this push only), then the owner runs the Windows manual browser/keyboard pass
-- **Turn:** MIRA Boss (Implementer lead), push the M2 commit to `origin main` per the 2026-11-16 23:10 DECISION, then hand to Owner for the manual pass
+- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 (conversation persistence and inspector) ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `4a9673f` and `cd86c7f`. **M3 (account area and settings) reviewed (MIRA Security 08:45 PASS; MIRA Reviewer 08:46, Minors resolved 08:50) and committed as one commit on top of `cd86c7f`; push approved (08:51 DECISION); status pushed-pending-owner-manual-pass once pushed.** Plan: `docs/M3_ACCOUNT_SETTINGS.md`; data layer = plain SQLite (ADR 0002)
+- **Working branch/commit:** `main` = the M3 commit on top of `cd86c7f` (1 ahead of `origin/main` = `cd86c7f`); the owner approved, directly to MIRA Boss at 08:38, pushing M3 (M3 push only; later pushes need fresh approval)
+- **Last verified build:** 2026-11-17 08:49 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), with M3 and the 08:50 fixes: dotnet build --no-incremental 0 warnings/0 errors, 215/215 xUnit (twice), 51/51 Vitest, Astro check 0/0/0, build 1 page. Windows manual pass pending (another PC). Requires Node >=22.23.4
+- **Open blockers:** none. Pending: push of the M3 commit (MIRA Boss); owner's Windows manual pass for M3 (screenshots waived). Backlog (`docs/M3_ACCOUNT_SETTINGS.md` §11): MIRA Dark contrast pass; global 413 problem JSON; strict CSP and security headers; M2 tests for another user's delete and the 5 s `DeleteWait` timeout; preference rows on user delete
+- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M3 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
+- **Next concrete action:** MIRA Boss pushes the M3 commit to `origin main`; then the owner runs the Windows manual pass on another PC
+- **Turn:** MIRA Boss (Implementer lead), push the M3 commit to `origin main` per the 2026-11-17 08:51 DECISION, then set Turn to Owner for the Windows manual pass
 
 ---
 
@@ -17,7 +17,7 @@
 
 ## YYYY-MM-DD HH:MM TZ | AGENT | TYPE
 
-<!-- TYPE: INTENT, IMPLEMENTATION, REVIEW, RESOLUTION, VERIFICATION, QUESTION / ADVICE, DECISION, ROLE CHANGE, MILESTONE CLOSE. If acting on a direct owner instruction that overrides the Turn line, say so in Objective. A DECISION entry states how the approval was received and its limits. -->
+<!-- TYPE: INTENT, IMPLEMENTATION, REVIEW, RESOLUTION, VERIFICATION, QUESTION / ADVICE, DECISION, ROLE CHANGE, MILESTONE CLOSE, SECURITY REVIEW. If acting on a direct owner instruction that overrides the Turn line, say so in Objective. A DECISION entry states how the approval was received and its limits. -->
 
 **Objective:**
 
@@ -983,3 +983,389 @@ npx vitest run / astro check / astro build PASS: 36/36; 0 errors/0 warnings/0 hi
 **Security/privacy concerns:** None. Staged files checked against `.gitignore`: no secrets, `.env`, local DB, `bin/`, `obj/`, `node_modules/` or `dist/`.
 
 **Next turn:** MIRA Boss (Implementer lead), push the M2 commit to `origin main` (owner-approved, this push only), then set Turn to Owner for the Windows manual browser/keyboard pass.
+
+---
+
+## 2026-11-17 07:53 MST | Grok (MIRA Boss, team lead) | OWNER ACCEPTANCE + MILESTONE CLOSE
+
+**Objective:** Record the owner's acceptance of M2 and close the milestone; open M3 planning.
+
+**Branch and commit:** `main` = `origin/main` = `cd86c7f`. M2 was pushed (owner-approved, the 2026-11-16 23:10 DECISION) and recreated by `git am` as `4a9673f` (docs: archive M0-M1 review log, M2 plain-SQLite decision and intent) and `cd86c7f` (feat(m2): SQLite conversation persistence and pipeline inspector); the local `216aa86`/`42d7adf` are superseded. This entry and the M3 plan draft are uncommitted.
+
+**Owner acceptance (reported directly by the owner to MIRA Boss, 2026-11-17):** the Windows manual pass is done. Keyboard navigation and click-throughs are good: renaming and deleting a conversation, creating a new test conversation, and the inspector. With the Reviewer's 22:34 and 23:06 VERIFICATION PASS, **M2 is accepted and closed.**
+
+**Carried to backlog (deferred M2 Minor from the 23:06 VERIFICATION):** automated tests for (1) another user's delete leaving the owner's active stream alone, and (2) the 5 s `DeleteWait` timeout when a provider ignores cancellation. Behaviour is correct by construction and was confirmed live; these are test-coverage items.
+
+**M3 opened (planning):** at the same time the owner asked for account settings: a lower-left profile area with a gear (like Codex and Grok Bot), the current theme as default, and a black-and-white SpaceX-style theme. Draft plan: `docs/M3_ACCOUNT_SETTINGS.md` (API contract, chunk split, acceptance criteria and tests, owner questions). No code changed.
+
+**Commands run:** none beyond reading files (no build or test needed; no code changed since the 23:10 verified build).
+
+**Security/privacy concerns:** None. The plan keeps default-deny, CSRF, loopback, owner-from-principal and allowlisted preference values.
+
+**Decisions needed from the owner:** the four questions in section 8 of `docs/M3_ACCOUNT_SETTINGS.md` (theme name, match-system option, settings scope now vs later, API path).
+
+**Next turn:** MIRA Boss (Implementer lead), get the owner's answers, then write the M3 INTENT and chunk 0 (contracts).
+
+---
+
+## 2026-11-17 08:19 MST | Grok (MIRA Boss, team lead) | DECISION + ROLE CHANGE
+
+**Objective:** Record the owner's answers to the M3 plan questions and the new MIRA Security role.
+
+**How received and limits:** Both were given by the owner **directly to MIRA Boss**: the M3 answers at 08:16 MST and the role at 08:17 MST, 2026-11-17. This entry records them; it authorizes no other agent and grants no commit or push (those still need fresh, direct owner approval).
+
+**Owner decisions (08:16):**
+- The black-and-white theme is named **Sovereign** (id `sovereign`). No other brand naming in the UI or docs; the docs may say it was inspired by a black/white aesthetic, with no trademarks.
+- Add **Match system** (id `system`): follows the OS `prefers-color-scheme` (dark → MIRA Dark, light → Sovereign) and updates live when the OS setting changes. The default stays `mira-dark`.
+- M3 settings scope: theme (`mira-dark` | `sovereign` | `system`), Sign out, font size (`small` | `default` | `large`, via a root CSS scale), and `inspectorOpenByDefault` (boolean). More settings later.
+
+**MIRA Boss decision (within its remit):** the API path follows the existing un-versioned style: `/api/me/preferences` (like `/api/auth/me`, `/api/conversations`, `/api/diagnostics`), not `/api/v1/...`.
+
+**ROLE CHANGE (08:17):** new team role **MIRA Security** (Grok bot `9bb94232-151b-4eba-aca8-e7cebe10e3c0`). It threat-models each milestone plan before implementation starts and security-reviews the implementation before acceptance, alongside MIRA Reviewer, in `SECURITY REVIEW` entries. Open Blocker or Major security findings block acceptance. Recorded in `docs/agent-sync/AGENT_SYNC.md` (generic optional "Security reviewer" role, `SECURITY REVIEW` entry type, milestone-cycle steps), `docs/agent-sync/REVIEW.template.md` and this log's template (entry type), `AGENTS.md` (MIRA rule naming MIRA Security), and the Roles line.
+
+**Next turn:** MIRA Boss (Implementer lead), append the M3 INTENT.
+
+---
+
+## 2026-11-17 08:20 MST | Grok (MIRA Boss, team lead) | INTENT
+
+**Objective:** Plan M3, account area and settings, as one Grok-team entry. Full plan: `docs/M3_ACCOUNT_SETTINGS.md`.
+
+**Branch and commit:** `main` = `origin/main` = `cd86c7f`; M3 work stays uncommitted until the owner approves a commit. No push.
+
+**Scope:** a lower-left account area (initial avatar, username, gear); a modal, keyboard-accessible Settings dialog; themes MIRA Dark (default), Sovereign and Match system via CSS custom properties; font size small/default/large via a root scale; inspector open by default; Sign out moved into the dialog; per-user persistence in SQLite; theme and font size applied before first paint (cached in `localStorage`, server value wins after sign-in). Out of scope: profile editing, avatar upload, password change, other settings.
+
+**API (in the existing `/api` group: auth required, CSRF on `PUT`, loopback only, owner from the principal):**
+- `GET /api/me/preferences` → 200 `{ "theme", "fontSize", "inspectorOpenByDefault" }`, defaults filled in.
+- `PUT /api/me/preferences` partial object → 200 full object. Allowlists: `theme` ∈ {`mira-dark`, `sovereign`, `system`}, `fontSize` ∈ {`small`, `default`, `large`}, `inspectorOpenByDefault` boolean. 400 for a non-object, unknown or duplicate key, wrong type or `null`, off-allowlist value, or an empty object; the problem title names the key, never the value. 403 without CSRF, 401 signed out.
+
+**Data:** migration 4 adds `UserPreferences(OwnerUserId, Key, Value, UpdatedAt, PK(OwnerUserId, Key))`; migrations 1–3 unchanged.
+
+**Work breakdown (one owner per file; A and B touch disjoint files):**
+
+| Step | Owner | Files | Depends on |
+|---|---|---|---|
+| 0. Contracts — **done** | MIRA Boss | `backend/Mira.Core/Preferences.cs` (keys, allowlists, `UserPreferences`, `PreferenceUpdate`, `PreferenceRules.TryParseUpdate`, `IUserPreferenceStore`), `backend/Mira.Tests/PreferenceContractTests.cs` | — |
+| Security: plan threat model | MIRA Security | `REVIEW.md` (`SECURITY REVIEW`) | 0 |
+| A. Backend | MIRA Backend | `Mira.Infrastructure/Sqlite/MiraDatabase.cs` (migration 4), new `Sqlite/SqliteUserPreferenceStore.cs`, new `InMemoryUserPreferenceStore.cs`, new `Mira.Api/Preferences/PreferenceEndpoints.cs`, `Mira.Api/MiraHost.cs`, new `Mira.Tests/PreferencesApiTests.cs`, new `Mira.Tests/PreferenceStoreTests.cs`, `Mira.Tests/ConversationStoreTests.cs` (schema-version assertions only) | 0, threat model |
+| B. Frontend | MIRA Frontend | `frontend/src/pages/index.astro`, new `scripts/theme.ts` + `theme.test.ts`, new `scripts/settings.ts` + `settings.test.ts`, `scripts/api.ts`, `scripts/chat.ts` | 0, threat model |
+| C. Integration | MIRA Boss | `README.MD`, `docs/M3_ACCOUNT_SETTINGS.md`, `REVIEW.md` (one IMPLEMENTATION entry); full clean run; curl smoke test | A, B |
+| Review | MIRA Reviewer + MIRA Security | `REVIEW.md` only | C |
+
+**Test plan:** contract tests (done); backend: migration 4 fresh and from version 3 with data intact, round-trips, partial updates, every 400 rule over HTTP, CSRF 403, 401, two-user isolation, restart persistence, no values in logs; frontend: allowlist validation of cached values, `system` resolution and live `change`, applying `data-theme`/`data-font-size`/`theme-color`, server overrides cache, PUT failure reverts with an alert, dialog focus trap/Esc/focus return, `textContent` only, inline script and `theme.ts` agree; whole suite twice; owner's Windows manual pass (themes, font sizes, OS switch, reload flash, contrast).
+
+**Chunk 0 results:** `dotnet build backend/Mira.sln -m:1` PASS 0 warnings/0 errors; `dotnet test --no-build` PASS 157/157 (140 existing + 17 new contract tests).
+
+**Security/privacy notes:** owner from the principal only; parameterized, owner-scoped SQL; allowlisted keys and values only, nothing free-form stored; values not logged; the cached theme and font size in `localStorage` are non-sensitive; user data rendered with `textContent`; no new dependency, paid service or network call. The inline pre-paint script needs a CSP hash if a CSP is added later.
+
+**Decisions needed from the owner:** none for M3 scope.
+
+**Next turn:** MIRA Security (Security reviewer), threat-model this plan and append a `SECURITY REVIEW`; with no open Blocker or Major, the Grok team proceeds with chunks A (MIRA Backend) and B (MIRA Frontend) in parallel.
+
+---
+
+## 2026-11-17 08:22 MST | MIRA Security | SECURITY REVIEW
+
+**Objective:** Threat-model the M3 plan (account area and settings) before chunks A and B start, as the Turn line and the 08:20 INTENT ask. I read files only; this entry and the header Turn line are my only edits. Nothing was staged or committed.
+
+**Branch and commit:** `main` at `cd86c7f`, uncommitted working tree (M3 plan, chunk 0 contract and tests).
+
+**Files examined or changed:** examined `docs/M3_ACCOUNT_SETTINGS.md`, `backend/Mira.Core/Preferences.cs`, `backend/Mira.Tests/PreferenceContractTests.cs`, `backend/Mira.Api/Security/RequestSecurity.cs`, `backend/Mira.Api/Auth/AuthEndpoints.cs`, `backend/Mira.Api/MiraHost.cs`, `backend/Mira.Infrastructure/Sqlite/MiraDatabase.cs`; changed `REVIEW.md` only.
+
+**Threat model summary:** The surface is small and mostly well defended by design. The owner comes only from the principal, and the route sits in the existing `/api` group, so it inherits default-deny auth, server-side session validation (`MiraHost.cs:158-171`), the Origin/`Sec-Fetch-Site` check and the CSRF filter (`RequestSecurity.cs:31-45`). Nothing free-form is stored, the SQL is parameterized and owner-scoped, and the 256 KB body cap applies. Sign-out already revokes the session server-side and requires CSRF (`AuthEndpoints.cs:29, 90-99`). IDOR: no user ID in path or body, and an `ownerUserId` key is rejected as unknown; the planned two-user isolation test covers it. **No Blocker or Major.**
+
+**Changes / findings:**
+- [Minor 1] **Unknown keys are echoed back.** `Preferences.cs:93` and `:99` put the client-supplied property name into `PreferenceValidationError.Key`, and the chunk A brief puts it into the problem `title` as `"<key>: <message>"`. A property name is request input like any value: it can be up to the 256 KB body limit, hold control characters or markup, and would reach logs if anything logs the title. **Fix:** only echo keys that are on `PreferenceKeys.All`. For an unknown key, return `Key = ""` with the fixed message `"Unknown preference."` (so the title has no client text). The duplicate-key case at `:99` only fires for allowlisted keys, so it can stay. Add a contract test that an unknown key such as `"<script>"` or a 10 KB name does not appear in the error.
+- [Minor 2] **Malformed JSON and wrong content type need fixed, tested responses.** If `PUT` binds `JsonElement` from the body, invalid JSON or an empty body is rejected by Minimal API binding before `TryParseUpdate` runs; in Development that `BadHttpRequestException` can surface parser text that includes request bytes. **Fix (chunk A):** make sure invalid JSON, an empty body and a non-JSON `Content-Type` return 400 or 415 with a fixed problem title and no request content, and add those three cases to `PreferencesApiTests`. Don't log the body or the exception message for them.
+- [Minor 3] **Sign-out from the dialog must reuse the existing flow.** The plan moves Sign out into the dialog but doesn't pin how it's done. **Fix (chunk B, plus an acceptance criterion):** the dialog calls the existing `POST /api/auth/logout` with `X-CSRF-TOKEN` (no new or GET sign-out path), closes the dialog, clears in-memory user state (preferences object, username, conversation list) and keeps only `mira.theme` and `mira.fontSize` in `localStorage`. Never cache the username, user ID or `inspectorOpenByDefault`. Add a backend test that the old cookie gets 401 on `GET /api/me/preferences` after logout, and a Vitest test that sign-out leaves only those two keys.
+- [Minor 4] **Pre-paint script must write constants, not stored strings.** Plan section 5 validates `localStorage` values against the allowlist, which is right. **Fix (chunk B):** set `data-theme`, `data-font-size` and the `theme-color` `content` from a constant lookup table (for example `{ "mira-dark": "#…", sovereign: "#000000" }`), using `setAttribute` only, never `innerHTML` or `document.write`, and don't write back to `localStorage` from that script. Extend the planned "bad values → defaults" test with hostile inputs (markup, quotes, a very long string, `__proto__`) and assert that the DOM gets the defaults; use `Object.hasOwn` or an array `includes` check so `__proto__` or `constructor` can't pass a lookup.
+- [Nit 1] **CSP.** There is no CSP today, so the inline script changes nothing now. It does lock in a future `script-src` hash that has to track every edit. Either move the snippet to a tiny synchronous `public/theme-init.js` loaded first in `<head>` (no hash to maintain, still no flash), or record in the M3 doc that adding a CSP later needs `sha256-…` for this script and a test that recomputes it.
+- [Nit 2] **Migration 4.** The SQL is fine and matches migrations 2-3 (`OwnerUserId ... REFERENCES Users(Id)` without `ON DELETE CASCADE`). If user deletion is ever added, preferences need cleanup alongside conversations. Optional hardening: `WITHOUT ROWID`, and a `CHECK (length(Key) <= 64 AND length(Value) <= 64)` as a cheap backstop to the allowlist.
+- [Nit 3] **Shared device.** The `localStorage` cache isn't per user, so the login page shows the previous user's theme. That's non-sensitive and acceptable; noted so it's a choice, not a surprise.
+
+**Acceptance criteria additions:** add to section 7 item 6 "invalid JSON, empty body and non-JSON content type return a fixed 400/415 with no request content; unknown key names are not echoed", and add a new item: "Sign out in the dialog uses the existing CSRF-protected `POST /api/auth/logout`, revokes the session (old cookie gets 401), and leaves only the theme and font-size cache in `localStorage`."
+
+**Commands and results:** read-only `rg`/`sed` over the files above. No build or test run (plan review). Dependency audit (`dotnet list package --vulnerable`, `npm audit`) is deferred to the implementation review, since M3 adds no dependency.
+
+**Security/privacy:** no secrets or user messages read or quoted.
+
+**Decisions needed from the owner:** none.
+
+**Next turn:** MIRA Boss (Implementer lead). No open Blocker or Major, so chunks A and B may proceed; fold Minors 1-4 into the chunk briefs (Minor 1 touches the frozen contract in `Preferences.cs`, MIRA Boss's file) and the acceptance criteria. MIRA Security security-reviews the code after chunk C.
+
+---
+
+## 2026-11-17 08:24 MST | Grok (MIRA Boss, team lead) | RESOLUTION
+
+**Objective:** Resolve MIRA Security's 2026-11-17 08:22 SECURITY REVIEW of the M3 plan (no Blocker/Major; 4 Minor, 3 Nit, 2 acceptance-criteria additions) before chunks A and B start.
+
+**Branch and commit:** `main` = `origin/main` = `cd86c7f`; uncommitted. No push.
+
+**Changes:**
+- **[Minor 1] Unknown keys echoed: RESOLVED in chunk 0.** `backend/Mira.Core/Preferences.cs`: an unknown key now gives `PreferenceValidationError("", "Unknown preference.")`; only allowlisted keys are ever named (bad values still name the key, never the value). `PreferenceContractTests.cs`: `ownerUserId` case now expects an empty key; new tests `UnknownKeyNamesAreNeverEchoed` (markup, `ownerUserId`, wrong-case `Theme`), `AVeryLongUnknownKeyNameIsNotEchoed` (10 KB name), `KnownKeyWithABadValueIsNamedWithoutTheValue`.
+- **[Minor 2] Malformed JSON / content type: folded into chunk A** (`docs/M3_ACCOUNT_SETTINGS.md` §3, §6 brief, §8 tests): fixed 400 for invalid JSON or an empty body, fixed 415 for a non-JSON content type, no request content or parser text, nothing logged; three API tests.
+- **[Minor 3] Sign-out flow: folded into chunk B and A** (§5, §6, §8): the dialog reuses `POST /api/auth/logout` with CSRF, clears in-memory user state and leaves only `mira.theme`/`mira.fontSize`; never cache username, user ID or `inspectorOpenByDefault`. Backend test: old cookie gets 401 on `GET /api/me/preferences` after logout; Vitest: only the two keys remain.
+- **[Minor 4] Pre-paint script writes constants: folded into chunk B** (§5, §6, §8): allowlist check with `includes`, constant lookup table, `setAttribute` only, no storage writes; hostile-input tests (markup, quotes, long string, `__proto__`, `constructor`).
+- **[Nit 1] CSP: adopted.** The pre-paint script is now `frontend/public/theme-init.js`, loaded synchronously first in `<head>`, not inline (no CSP hash to maintain). This supersedes "inline script" in the 08:20 INTENT; the file is owned by chunk B.
+- **[Nits 2–3]: recorded as optional** in the plan's new §9 (migration 4 `WITHOUT ROWID` + length `CHECK`, user-deletion cleanup; shared-browser cache accepted).
+- **Acceptance criteria:** both of Security's additions are in §7 (item 6 extended; new item 7).
+
+**Commands run and results:**
+```text
+dotnet build backend/Mira.sln -m:1                 PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1       PASS: 162/162 (140 existing + 22 contract tests)
+```
+
+**Security/privacy concerns:** None open. No secrets or user data.
+
+**Decisions needed from the owner:** none.
+
+**Next turn:** Grok team (Implementer): chunks A (MIRA Backend) and B (MIRA Frontend) in parallel per `docs/M3_ACCOUNT_SETTINGS.md` §6, then chunk C and one IMPLEMENTATION entry for MIRA Reviewer and MIRA Security.
+
+---
+
+## 2026-11-17 08:27 MST | Grok (MIRA Backend) | IMPLEMENTATION
+**Objective:** M3 chunk A (backend) per docs/M3_ACCOUNT_SETTINGS.md §6 and the 08:20 INTENT / 08:24 RESOLUTION.
+**Branch and commit:** main at cd86c7f, uncommitted working tree. No commit, no push.
+**Files changed:** MiraDatabase.cs (migration 4: UserPreferences, WITHOUT ROWID, length CHECKs per Security nit 2); new SqliteUserPreferenceStore.cs; new InMemoryUserPreferenceStore.cs; new Mira.Api/Preferences/PreferenceEndpoints.cs; MiraHost.cs (registration, mapping); new PreferenceStoreTests.cs; new PreferencesApiTests.cs; ConversationStoreTests.cs (schema-version asserts only).
+**Changes:** GET/PUT /api/me/preferences in the /api group (auth, CSRF on PUT, owner from principal). PUT reads the body itself: non-JSON Content-Type -> fixed 415; invalid JSON or empty body -> fixed 400 "The request body must be a JSON object."; PreferenceRules errors -> 400 "<key>: <message>". No request content in responses; nothing logged. SQLite upsert with ON CONFLICT in one parameterized, owner-scoped transaction. Security Minors 2 and 3 (backend parts) covered by tests.
+**Commands run and results:** dotnet build backend/Mira.sln -m:1 PASS (0 warnings, 0 errors); dotnet test backend/Mira.sln --no-build -m:1 PASS 215/215.
+**Security/privacy concerns:** none open. Fixtures synthetic.
+**Decisions needed from the owner:** none.
+**Next turn:** MIRA Boss, chunk C integration after chunk B.
+
+Open items from MIRA Backend: (1) the 256 KB body limit isn't tested in-process; cover it in the chunk C curl smoke test. (2) The Development-mode 400 bodies should be checked by curl. (3) Preferences don't cascade on user delete; handle that if user deletion is added.
+
+*Recorded verbatim by MIRA Boss on behalf of MIRA Backend, which does not edit REVIEW.md (draft: `/workspace/mira/m3/backend-impl-draft.md`).*
+
+---
+
+## 2026-11-17 08:31 MST | Grok (MIRA Frontend) | IMPLEMENTATION
+**Objective:** M3 chunk B (frontend account settings) per docs/M3_ACCOUNT_SETTINGS.md §5-§8 and the 08:24 RESOLUTION (Minors 3-4, Nit 1). No backend edits; nothing committed or pushed.
+**Files changed:** new frontend/public/theme-init.js; frontend/src/pages/index.astro; new frontend/src/scripts/theme.ts + theme.test.ts; new settings.ts + settings.test.ts; api.ts; chat.ts.
+**Changes / findings:**
+- Theme colours moved to CSS variables; MIRA Dark keeps its exact previous hex values. Sovereign is black/white at 21.00:1 for every pair checked.
+- Pre-existing MIRA Dark contrast misses were left as-is to stay pixel-identical (text on selected #2c4d86: #a9b8db 4.20:1, #d6a45c 3.71:1, #f28c8c 3.54:1; UI: focus ring vs accent 1.95:1, input border 2.81:1, border vs surface/bg 1.55/1.83:1, danger border 1.80:1, hover 1.22:1).
+- system: light gives Sovereign and dark gives MIRA Dark, following live matchMedia changes. Font sizes small/default/large (.875/1/1.125).
+- Account area at the bottom of the sidebar (initial + username via textContent, gear). Settings <dialog>: focus trap, Esc/Close, focus returns to the gear. A failed PUT reverts and shows role="alert".
+- Sign out reuses POST /api/auth/logout with CSRF, clears in-memory user state, and leaves only mira.theme and mira.fontSize in localStorage.
+- theme-init.js: allowlist includes, constant lookup, setAttribute only, no storage writes; hostile-input tests.
+- Deviations: the charset/viewport/theme-color metas precede the script (still the first script, ahead of the stylesheet); <script is:inline src="/theme-init.js">; sign-out clears ConversationWorkspace's public fields directly (it has no reset API).
+**Commands run and results:** Vitest 49/49 (36 existing + 13 new); astro check 0/0/0; build 1 page, with dist/theme-init.js first in <head>.
+**Security/privacy concerns:** none new.
+**Decisions needed from the owner:** none blocking (the MIRA Dark contrast gaps are deferred to a later contrast pass by MIRA Boss).
+
+*Recorded verbatim by MIRA Boss on behalf of MIRA Frontend, which does not edit REVIEW.md (draft: `/workspace/mira/m3/frontend-impl-draft.md`).*
+
+---
+
+## 2026-11-17 08:42 MST | Grok (MIRA Boss, team lead) | IMPLEMENTATION
+
+**Objective:** M3 chunk C (integration) after chunks A (08:27) and B (08:31): full clean run, local smoke test of the preferences API, minimal integration fixes, README and plan doc final state, and MIRA Boss's answers to MIRA Frontend's questions. This is the team's summary for review; the chunk A and B entries above give their details.
+
+**Branch and commit:** `main` = `origin/main` = `cd86c7f`; all M3 work uncommitted. No commit, no push.
+
+**Integration fixes (minimal; file owner noted):**
+- `backend/Mira.Api/Preferences/PreferenceEndpoints.cs` (owner: MIRA Backend; edited by MIRA Boss): a body over Kestrel's 256 KB limit threw `BadHttpRequestException` out of the handler, so Development returned the developer exception page (exception type, message and stack trace in a 413 body) and logged a `fail`. Now caught (`StatusCode == 413`) and returned as a fixed problem `413 The request body is too large.` Not testable in-process (the test server doesn't enforce the Kestrel limit); covered by the smoke test.
+- `backend/Mira.Tests/DiagnosticsApiTests.cs` (owner: MIRA Boss, from M2 chunk C): `RetentionPurgesEventsOlderThanThirtyDaysAtStartAndEveryDay` was flaky (failed about 1 run in 4, timeout at line 142). A single `FakeTimeProvider.Advance` could run before the service registered its next `Task.Delay`, so the daily purge never fired. The test now advances in 6-hour steps inside the wait loop. Test-only; no product change. 6 consecutive runs passed after the fix.
+
+**Decisions (MIRA Boss, answering MIRA Frontend):** (a) the pre-existing MIRA Dark contrast gaps are accepted for M3 to keep MIRA Dark pixel-identical, and are logged as backlog for a later contrast pass; (b) the **Show inspector** toggle not writing the preference is intended: the Settings checkbox sets the default, the toggle is per session.
+
+**Docs:** `README.MD` (status, account area, Settings, themes, font size, inspector default, sign-out location, file table); `docs/M3_ACCOUNT_SETTINGS.md` (status, §10 final state, §11 backlog: MIRA Dark contrast pass; M2 tests for another user's delete and the cancel timeout; preference rows on user delete; optional in-process 413 test).
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1):**
+```text
+npm --prefix frontend ci                              PASS: 0 vulnerabilities
+npx vitest run                                        PASS: 49/49 in 6 files
+npx astro check                                       PASS: 0 errors / 0 warnings / 0 hints
+npx astro build                                       PASS: 1 page; dist/theme-init.js, loaded first in <head> (before the stylesheet)
+dotnet build backend/Mira.sln -m:1 --no-incremental   PASS: 0 warnings, 0 errors (after both fixes)
+dotnet test backend/Mira.sln --no-build -m:1          PASS: 215/215, six consecutive runs after the fixes
+Smoke: API on 127.0.0.1:5080, temp DB under /tmp, synthetic user created with create-user --password-stdin,
+       signed in via GET /api/auth/csrf + POST /api/auth/login (same as the frontend); run in Development and Production
+  GET /api/me/preferences (new user)                  200 {"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false}
+  PUT {"theme":"system"}, then {"fontSize":"large"}   200, full object each time; GET after: theme system, fontSize large
+  restart API, GET                                    200, values kept
+  PUT unknown key "<script>…"                         400 "Unknown preference." (key not echoed)
+  PUT {"theme":"neon-…"}                              400 "theme: Must be one of: mira-dark, sovereign, system." (value not echoed)
+  PUT Content-Type text/plain / none                  415 "The request body must be JSON (Content-Type: application/json)."
+  PUT invalid JSON / empty body                       400 "The request body must be a JSON object." (no parser text)
+  PUT without X-CSRF-TOKEN                            403 "CSRF validation failed."
+  PUT body > 256 KB                                   413 "The request body is too large." (was the Development exception page before the fix)
+  POST /api/auth/logout, then GET with the old cookie 200, then 401
+  Development vs Production response bodies           identical (traceId aside)
+  submitted markers / long value in API logs          0 occurrences
+grep innerHTML|insertAdjacentHTML|set:html|document.write in frontend/src and public   comments only
+```
+
+**Security/privacy concerns:** None open. The 413 fix removes stack-trace exposure in Development for this route. Fixtures and the smoke user are synthetic; the temp DB is outside the repo.
+
+**Decisions needed from the owner:** none now. After review: approval of an M3 commit (and any push), and the Windows manual pass (themes, font sizes, an OS light/dark switch on Match system, reload flash, keyboard use of the Settings dialog).
+
+**Next turn:** MIRA Reviewer (Reviewer) and MIRA Security (Security reviewer), review M3 (chunks 0, A, B, C) per this entry and the 08:27 and 08:31 entries; append REVIEW and SECURITY REVIEW entries.
+
+---
+
+## 2026-11-17 08:45 MST | MIRA Security | SECURITY REVIEW
+
+**Objective:** Security-review the M3 implementation (chunks 0, A, B, C) per the 08:27, 08:31 and 08:42 IMPLEMENTATION entries, alongside MIRA Reviewer, and check that my 08:22 plan Minors 1-4 were implemented. I only read files and ran the dependency audits; this entry is my only edit. Nothing was staged or committed. I left the header Turn line alone because MIRA Reviewer shares this turn.
+
+**Branch and commit:** `main` at `cd86c7f`, uncommitted M3 working tree.
+
+**Files examined:** `backend/Mira.Core/Preferences.cs`, `backend/Mira.Api/Preferences/PreferenceEndpoints.cs`, `backend/Mira.Api/MiraHost.cs` (diff), `backend/Mira.Infrastructure/Sqlite/MiraDatabase.cs` (diff), `backend/Mira.Infrastructure/Sqlite/SqliteUserPreferenceStore.cs`, `backend/Mira.Tests/PreferenceContractTests.cs`, `backend/Mira.Tests/PreferencesApiTests.cs`, `frontend/public/theme-init.js`, `frontend/src/scripts/theme.ts`, `settings.ts`, `session.ts`, `chat.ts` (sign-out and `showLogin`), `api.ts`, `theme.test.ts`, `settings.test.ts`, `frontend/dist/index.html`.
+
+**Plan Minors, verified:**
+- **Minor 1, RESOLVED.** `Preferences.cs:91-96` returns `Key = ""` with the fixed `"Unknown preference."`; only allowlisted keys reach the duplicate and type errors. Covered by `PreferenceContractTests.cs:50-61` (markup and a very long name) and over HTTP by `PreferencesApiTests.cs:89-90` (`ownerUserId`, an `<img onerror>` key).
+- **Minor 2, RESOLVED.** `PreferenceEndpoints.cs:26-44` reads the body itself: non-JSON content type gets a fixed 415, invalid or empty JSON a fixed 400, and Kestrel's 413 a fixed title (which also closes the Development stack-trace leak). Nothing logs the body or parser messages. Tests: `PreferencesApiTests.cs:122-132`, including a log-marker check.
+- **Minor 3, RESOLVED.** Sign-out in the dialog calls the existing CSRF-protected `POST /api/auth/logout` (`session.ts:9-31`, one retry with a fresh token on 403); `showLogin` (`chat.ts:125-145`) closes the dialog and clears the account area, settings memory, conversation list and messages; `retainAppearanceCache` (`theme.ts:146-162`) removes every `mira.*` key and keeps only allowlisted theme and font size. The old cookie gets 401 after logout (`PreferencesApiTests.cs:146`).
+- **Minor 4, RESOLVED.** `public/theme-init.js` checks values with array `includes`, writes only through `setAttribute`, takes `theme-color` from a constant map keyed by the resolved theme, and never writes storage. `theme.test.ts:182-191` covers hostile values including markup and `__proto__`. Server values are allowlisted again before they're applied (`settings.ts:126-127`, `chat.ts:449-451`).
+
+**Other checks (all PASS):**
+- **Authz and IDOR:** both routes take the owner only from `CurrentUser.GetUserId(http.User)` (`PreferenceEndpoints.cs:21, 54`) and sit in the `/api` group (default deny, session validation, origin check, CSRF filter). The SQL is owner-scoped on every statement.
+- **SQL and migration 4:** parameterized upsert and read in one transaction (`SqliteUserPreferenceStore.cs:23-44`). The migration is append-only, `WITHOUT ROWID`, with 64-character `CHECK` backstops (`MiraDatabase.cs:80-91`).
+- **XSS:** the username and initial use `textContent` (`settings.ts:24-32`, hostile-name test at `settings.test.ts:217-219`), as do the alerts that show the server's problem title (`settings.ts:112`). No `innerHTML`, `insertAdjacentHTML` or `set:html` in the changed files.
+- **CSP readiness:** the built `dist/index.html` has only external scripts (`/theme-init.js` and an `/_astro/*.js` module), so a future `script-src 'self'` needs no hash.
+- **Dependencies:** `npm audit` reports 0 vulnerabilities, and `dotnet list backend/Mira.sln package --vulnerable --include-transitive` reports none for all four projects. M3 adds no dependency.
+
+**Findings:**
+- [Nit 1] The fixed 413 handling covers only `PUT /api/me/preferences`. Other `/api` routes that read bodies would still show the Development exception page on an oversized body. That's existing behaviour (loopback, Development only) and outside M3; a later hardening could map `BadHttpRequestException` to problem JSON globally.
+- [Nit 2] Now that every script is external, adding a strict CSP (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`) plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` is cheap. That's a backlog item, not an M3 requirement.
+
+**Commands and results:** read-only `rg`/`sed`/`git diff`; `npm audit` (0 vulnerabilities); `dotnet list ... --vulnerable --include-transitive` (none). I didn't rerun the build or tests; I rely on the 08:42 entry and MIRA Reviewer for those.
+
+**Security/privacy:** no secrets or user messages read or quoted.
+
+**Decisions needed from the owner:** none from security. A commit or push still needs the owner's direct approval.
+
+**Next turn:** MIRA Boss (Implementer lead), once MIRA Reviewer's REVIEW is in. **Security PASS**: no Blocker, Major or Minor open; two Nits for the backlog.
+
+---
+
+## 2026-11-17 08:46 MST | MIRA Reviewer | REVIEW
+
+**Objective:** Independent review of M3 (account area and settings: chunks 0, A, B, C), per the 2026-11-17 08:42 IMPLEMENTATION and the 08:27 and 08:31 entries. MIRA Boss handed the Turn to the Reviewer, jointly with MIRA Security; the Turn line names both. I only read files: this entry is my only output, and nothing was edited, staged or committed.
+
+**Branch and commit:** `main` = `origin/main` = `cd86c7f`. M3 is uncommitted: `git status` shows 25 entries, 12 modified and 13 untracked. Nothing pushed.
+
+**Files examined:**
+- Backend: `backend/Mira.Core/Preferences.cs`; `Mira.Api/Preferences/PreferenceEndpoints.cs`; `Mira.Infrastructure/Sqlite/SqliteUserPreferenceStore.cs`; the migration 4 diff in `MiraDatabase.cs`; the `MiraHost.cs` diff.
+- Frontend: `frontend/public/theme-init.js`; `src/scripts/{theme,settings}.ts`; the `api.ts`, `chat.ts` and `index.astro` diffs; the built `dist/index.html` head.
+- Tests: the `DiagnosticsApiTests.cs` and `ConversationStoreTests.cs` diffs; the test names in `PreferenceStoreTests.cs` and `PreferencesApiTests.cs`.
+- Docs: `docs/M3_ACCOUNT_SETTINGS.md`; the `AGENTS.md` and `docs/agent-sync/*` diffs (the MIRA Security role and the co-author trailer, recorded in the 08:19 owner decision). Log entries from 08:19 on.
+
+**Findings:**
+
+- **[Minor] The retention-test de-flake fixes the race but weakens the assertion: the test no longer checks the daily purge cadence.**
+  - Where: `backend/Mira.Tests/DiagnosticsApiTests.cs:141-147`.
+  - Evidence:
+    - The new loop advances the fake clock by 6 h on every poll until "recent" is gone. `WaitUntilAsync` (`:166-174`) polls every 20 ms for 10 s, so the loop can advance up to about 125 days of fake time.
+    - Before, a single `Advance(1.5 days)` bounded it.
+    - Mutation check in a scratch copy (`/tmp/m3mut`): with `PipelineRetentionService.Interval` changed from 24 h to **7 days**, `RetentionPurgesEventsOlderThanThirtyDaysAtStartAndEveryDay` still **passes**. No other test pins `Interval`.
+    - The root-cause analysis (Advance can run before the next `Task.Delay` is registered) is correct, and the product code is unchanged and correct by inspection.
+    - The owner's "purge daily" decision (M2 owner answer 8) is no longer guarded by a test.
+  - Expected: a race-free test that still fails if the purge isn't daily.
+  - Suggested fix:
+    - Bound the loop: count the steps and fail if the total advance exceeds 48 h (e.g. `Assert.True(steps * 6 <= 48)`).
+    - Or add `Assert.Equal(TimeSpan.FromDays(1), PipelineRetentionService.Interval)`.
+    - Or start "recent" at 29.5 days old and require removal within 30 h of fake time.
+  - Test-only, cheap. Fix before the commit if possible.
+
+- **[Minor] Overlapping preference saves can leave the UI and cache out of step with the server.**
+  - Where: `frontend/src/scripts/settings.ts:139-170`; `chat.ts` `settingsDialog` `change` handler and `savePreference`.
+  - Evidence:
+    - Each radio or checkbox `change` starts its own `PUT` without waiting for, or ordering against, one already in flight.
+    - Arrowing through a radio group fires a `change` per key press, so several `PUT`s can overlap.
+    - Each response overwrites `this.current` and re-caches it. A late response for an earlier choice therefore leaves the UI and `mira.theme` on the older value while the server holds the newer one.
+    - A failure of an earlier `PUT` reverts to its own `previous` snapshot and discards a later change the server did accept.
+    - It self-corrects on the next sign-in or reload (server wins). There is no security impact.
+  - Expected: the last user choice wins in the UI, cache and server.
+  - Suggested fix: serialize saves (a promise chain), or tag each request with a sequence number and ignore responses and reverts from anything but the latest. Add a Vitest case with two overlapping `change` calls resolving out of order.
+
+- **Clean areas, verified in the code and live:**
+  - **Chunk 0, contract.** Keys and values are allowlisted. The parser handles duplicate keys (`JsonDocument` keeps both; the `seen` set rejects the second), rejects `null` or wrong types, and rejects empty or non-object bodies. Errors name only allowlisted keys and never a value. Stored rows fall back to defaults.
+  - **Chunk A, backend.**
+    - Migration 4 is hand-written, plain SQLite (ADR 0002), `WITHOUT ROWID` with length `CHECK`s, FK to `Users`. Migrations 1-3 are unchanged, and it is tested fresh, from version 3 with data, and for idempotence.
+    - The store is parameterized and owner-scoped: `SELECT … WHERE OwnerUserId = $owner`, and an upsert inside `BEGIN IMMEDIATE`. The owner comes only from the principal.
+    - Routes sit in the `/api` group: the fallback policy denies anonymous requests (401 live), and the CSRF filter and same-origin check apply to `PUT` (403 live).
+    - The handler reads the body itself, so 415, 400 and 413 bodies have fixed titles. Deep nesting gives a fixed 400.
+    - Nothing is logged, and the API still binds only to `127.0.0.1:5080`.
+  - **Chunk B, frontend.**
+    - `theme-init.js` uses `includes` allowlists, a constant colour table and `setAttribute` only, with no storage writes. It is external, not inline, so a future `script-src 'self'` CSP needs no hash. The built head has it as the first script, ahead of the stylesheet.
+    - The username and initial use `textContent`. There is no `innerHTML`, `insertAdjacentHTML`, `outerHTML`, `document.write` or `set:html` in `frontend/src` or `frontend/public`.
+    - The server response is re-validated against the allowlists before it is applied (`settings.ts:123-131`).
+    - Sign-out reuses `POST /api/auth/logout` with CSRF and keeps only `mira.theme` and `mira.fontSize`.
+    - The dialog is a native `<dialog>` with `showModal`, `aria-labelledby`, `fieldset`/`legend` radio groups, a labelled checkbox, Esc/Close, focus return to the gear and a `role="alert"` error.
+    - Sovereign hover overrides keep text visible (`index.astro:167-175`).
+    - Vanilla TS, no new dependency.
+  - **Chunk C.**
+    - The 413 fix is a real fix: a fixed problem body in both Development and Production, and no `fail` log line (live).
+    - `M3_ACCOUNT_SETTINGS.md` §3, §5 and §10 match the code: routes, the 400/413/415 rules, migration 4 hardening, the pre-paint script and sign-out.
+  - **Secrets and private data:** none. No secrets, DB or `.env` files in the diff; fixtures are synthetic.
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1):**
+```text
+dotnet build backend/Mira.sln -m:1                 PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1 (x2)  PASS: 215/215, 215/215
+npm --prefix frontend test                         PASS: 49/49 in 6 files
+npm --prefix frontend run check                    PASS: 0 errors / 0 warnings / 0 hints
+npm --prefix frontend run build                    PASS: 1 page; <script src="/theme-init.js"> first in <head>, before the CSS
+Mutation (scratch copy /tmp/m3mut): retention Interval 24 h -> 7 days
+                                                   retention test still PASSES -> Minor 1
+Live smoke, API on 127.0.0.1:5080, temp DB /tmp/m2rev/db, synthetic users A and B, Development and Production:
+  GET (new user) / PUT {sovereign, large} / B GET  200 defaults / 200 full object / B still defaults (isolated)
+  PUT neon, null, 1, "true", {}, [], duplicate key, ownerUserId, "<script>" key
+                                                   400 each; titles name allowlisted keys only, never values or unknown keys
+  invalid JSON / empty body / 200 KB deep nesting  400 "The request body must be a JSON object."
+  Content-Type text/plain                          415 fixed title
+  PUT without X-CSRF-TOKEN                         403
+  PUT 300 KB body                                  413 "The request body is too large." (Dev = Prod; no fail log)
+  anonymous GET                                    401
+  "neon" or long value in API logs                 0 / 0
+git status after build                             25 entries, unchanged
+```
+
+**Security/privacy concerns:** None open on my side. Owner scoping, CSRF, default-deny, loopback-only and the no-echo rules hold, both live and in the code. MIRA Security's code review is separate.
+
+**Decisions needed from the owner:** None. Committing and pushing M3 need your approval given directly to the committing agent. The Windows manual pass is still owed (themes, font sizes, an OS switch on Match system, reload flash, keyboard use of the dialog).
+
+**Next turn:** Grok team (Implementer), optionally fix the two Minors, the retention-test bound ideally before the commit. No Blocker or Major from MIRA Reviewer, so the commit and push may proceed once MIRA Security also passes and the owner's approval reaches the committing agent directly.
+
+---
+
+## 2026-11-17 08:50 MST | Grok (MIRA Boss, team lead) | RESOLUTION
+
+**Objective:** Resolve MIRA Reviewer's two Minors from the 2026-11-17 08:46 REVIEW before the M3 commit. MIRA Security's 08:45 SECURITY REVIEW passed with two backlog Nits.
+
+**Branch and commit:** `main` = `origin/main` = `cd86c7f`; uncommitted until the commit recorded in the next entry. No push.
+
+**Changes:**
+- **[Minor] Retention test no longer guarded the daily cadence: RESOLVED.** `backend/Mira.Tests/DiagnosticsApiTests.cs` (owner: MIRA Boss): the loop still advances the fake clock in 6 h steps (race-free), but the total advance is capped at 48 h and asserted (`advanced <= 48 h`); "recent" now starts 29.5 days old so a single 24 h purge removes it with margin for a late `Task.Delay` registration. **Mutation check:** `PipelineRetentionService.Interval` 24 h → 7 days makes the test **fail** (timeout, "recent" never purged); reverted, file restored byte-for-byte (sha256 OK). Unmutated: 5/5 isolated runs pass, plus the full-suite runs below.
+- **[Minor] Overlapping settings saves: RESOLVED.** `frontend/src/scripts/settings.ts` (owner: MIRA Frontend; edited by MIRA Boss): `SettingsController.change` serializes `PUT`s through a promise chain (in the order the user changed things) and tags each change with a sequence number; only the latest change's outcome is applied to the UI and the theme cache. A superseded change resolves `true` (so `chat.ts`'s inspector revert doesn't fire); a failed latest save reverts to the last server-confirmed state; `loadFromServer` and `clearMemory` (sign-out) also bump the sequence so in-flight saves are ignored. `chat.ts` needed no change. Tests (`settings.test.ts`): overlapping saves with the first response arriving while the second is queued end on the second's server state and cache (`mira.theme` = `system`), one announcement; a failed latest save after a successful earlier one reverts to the earlier server state. With the stale-response guard removed, the first test fails (checked, then restored).
+- **Security Nits 1–2 → backlog** (`docs/M3_ACCOUNT_SETTINGS.md` §11): global fixed problem JSON for `BadHttpRequestException`/413; strict CSP plus `nosniff` and `Referrer-Policy`. The backlog also lists the MIRA Dark contrast pass, the M2 tests (another user's delete; the cancel timeout), preference rows on user delete, an optional in-process 413 test, and the owner's Windows manual pass.
+
+**Commands run and results (Linux box, no `Mira__`/`MIRA_`/`ASPNETCORE_` variables set):**
+```text
+dotnet build backend/Mira.sln -m:1 --no-incremental   PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1 (x2)     PASS: 215/215, 215/215
+Mutation: retention Interval 24 h -> 7 days            retention test FAILS (as intended); reverted, sha256 OK
+npx vitest run                                        PASS: 51/51 in 6 files (49 + 2 new)
+npx astro check / astro build                         PASS: 0/0/0; 1 page
+```
+
+**Security/privacy concerns:** None. No secrets or user data.
+
+**Decisions needed from the owner:** none.
+
+**Next turn:** MIRA Boss (Implementer lead), record the owner's push approval and commit M3.
+
+---
+
+## 2026-11-17 08:51 MST | Grok (MIRA Boss, team lead) | DECISION
+
+**Objective:** Record the owner's M3 push approval and the manual-pass arrangement.
+
+**Decision and how it was received:** At 08:38 MST the owner (sorrynofocus) approved, **directly to MIRA Boss**, committing M3 and pushing it to `origin main` once both reviews pass (**M3 push only**; any later push needs fresh, direct approval). Both passed: MIRA Security 08:45 SECURITY REVIEW PASS and MIRA Reviewer 08:46 REVIEW with no Blocker or Major (its two Minors resolved at 08:50). The owner explicitly **waived screenshots** for M3. The owner's Windows manual pass will happen later on another PC, so M3 is recorded as **pushed-pending-owner-manual-pass**: not accepted until that pass is reported. This entry records the approval and authorizes no other agent.
+
+**Branch and commit:** M3 is committed as one conventional commit on top of `cd86c7f` (this entry is part of it; the hash is reported outside the commit). `origin/main` confirmed at `cd86c7f` before the commit.
+
+**Next turn:** MIRA Boss (Implementer lead), push the M3 commit to `origin main` (owner-approved, M3 only), then set Turn to Owner for the Windows manual pass.
