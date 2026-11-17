@@ -22,7 +22,7 @@ public sealed class MiraApiFactory : WebApplicationFactory<Program>
     {
         _settings = new Dictionary<string, string?>
         {
-            ["Mira:DatabasePath"] = Path.Combine(_directory, "mira.db"),
+            ["Mira:DatabasePath"] = DatabasePath,
             ["Mira:Chat:MockDelayMilliseconds"] = "0"
         };
         foreach (var (key, value) in settings ?? []) _settings[key] = value;
@@ -30,6 +30,9 @@ public sealed class MiraApiFactory : WebApplicationFactory<Program>
     }
 
     public ConcurrentQueue<string> Logs { get; } = new();
+
+    // Default private path; a test may pass its own Mira:DatabasePath (for example to restart the API on the same database).
+    public string DatabasePath => Path.Combine(_directory, "mira.db");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -93,6 +96,34 @@ public static class ClientExtensions
     {
         Content = JsonContent.Create(new { message })
     };
+
+    public static HttpRequestMessage StreamRequest(string message, Guid conversationId) => new(HttpMethod.Post, "/api/chat/stream")
+    {
+        Content = JsonContent.Create(new { message, conversationId })
+    };
+
+    // Creates the user (synthetic fixture password) and returns a signed-in client carrying a CSRF token.
+    public static async Task<HttpClient> LoggedInClientAsync(this MiraApiFactory factory, string username)
+    {
+        await factory.CreateUserAsync(username, TestUsers.Password);
+        var client = factory.CreateClient();
+        var login = await client.LoginAsync(username, TestUsers.Password);
+        if (!login.IsSuccessStatusCode) throw new InvalidOperationException($"Login failed: {login.StatusCode}");
+        return client;
+    }
+
+    public static async Task<Guid> CreateConversationAsync(this HttpClient client, string? title = null)
+    {
+        var response = await client.PostAsJsonAsync("/api/conversations", new { title });
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+}
+
+public static class TestUsers
+{
+    // Synthetic fixture value, not a real credential.
+    public const string Password = "a perfectly ordinary passphrase of forty+ characters";
 }
 
 public sealed record SseEvent(string Event, JsonElement Data);

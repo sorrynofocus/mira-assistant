@@ -8,9 +8,12 @@ using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Mira.Api.Auth;
 using Mira.Api.Chat;
+using Mira.Api.Conversations;
+using Mira.Api.Diagnostics;
 using Mira.Api.Security;
 using Mira.Core;
 using Mira.Infrastructure;
+using Mira.Infrastructure.Pipeline;
 using Mira.Infrastructure.Sqlite;
 
 namespace Mira.Api;
@@ -54,9 +57,15 @@ public static class MiraHost
         builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = MaxRequestBodyBytes);
         services.Configure<KestrelServerOptions>(kestrel => kestrel.AddServerHeader = false);
 
-        services.AddSingleton<IConversationStore, InMemoryConversationStore>();
+        services.AddSingleton<IConversationStore, SqliteConversationStore>();
         services.AddSingleton<IChatProvider>(sp =>
             new MockChatProvider(TimeSpan.FromMilliseconds(sp.GetRequiredService<MiraOptions>().Chat.MockDelayMilliseconds)));
+
+        // Inspector (M2): only the configured chat provider's model ID may be stored; anything else becomes "unlisted".
+        services.AddSingleton<IPipelineEventStore, SqlitePipelineEventStore>();
+        services.AddSingleton<IPipelineRedactor>(sp => new PipelineRedactor([sp.GetRequiredService<IChatProvider>().ModelId]));
+        services.AddSingleton<IPipelineRecorder, PipelineRecorder>();
+        services.AddHostedService<PipelineRetentionService>();
         services.AddSingleton<ITranscriptionProvider, MockTranscriptionProvider>();
         services.AddSingleton<ISpeechProvider, MockSpeechProvider>();
         services.AddSingleton<LoginThrottle>();
@@ -134,6 +143,16 @@ public static class MiraHost
         var api = app.MapGroup("/api").RequireCsrfForUnsafeMethods();
         api.MapAuthEndpoints();
         api.MapChatEndpoints();
+        api.MapConversationEndpoints();
+        api.MapDiagnosticsEndpoints();
+    }
+
+    // API startup only (not create-user): apply migrations, then mark messages left Streaming by a crash as Interrupted.
+    public static async Task InitializeMiraDatabaseAsync(this WebApplication app)
+    {
+        var database = app.Services.GetRequiredService<MiraDatabase>();
+        await database.MigrateAsync();
+        await database.InterruptStreamingMessagesAsync();
     }
 
     private static async Task ValidateSessionAsync(CookieValidatePrincipalContext context)

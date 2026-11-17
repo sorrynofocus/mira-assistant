@@ -41,8 +41,47 @@ public sealed class MiraDatabase
                 CreatedAt TEXT NOT NULL
             );
             CREATE INDEX IX_ActionAudit_Owner_CreatedAt ON ActionAudit(OwnerUserId, CreatedAt);
+            """),
+        (2, """
+            CREATE TABLE Conversations (
+                Id TEXT NOT NULL PRIMARY KEY,
+                OwnerUserId TEXT NOT NULL REFERENCES Users(Id),
+                Title TEXT NULL,
+                CreatedAt TEXT NOT NULL,
+                UpdatedAt TEXT NOT NULL
+            );
+            CREATE INDEX IX_Conversations_Owner_UpdatedAt ON Conversations(OwnerUserId, UpdatedAt DESC);
+
+            CREATE TABLE Messages (
+                Id TEXT NOT NULL PRIMARY KEY,
+                ConversationId TEXT NOT NULL REFERENCES Conversations(Id) ON DELETE CASCADE,
+                Role TEXT NOT NULL,
+                Content TEXT NOT NULL,
+                Status TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL,
+                ModelId TEXT NULL,
+                RequestId TEXT NULL
+            );
+            CREATE INDEX IX_Messages_Conversation_CreatedAt ON Messages(ConversationId, CreatedAt);
+            """),
+        (3, """
+            CREATE TABLE PipelineEvents (
+                Id TEXT NOT NULL PRIMARY KEY,
+                OwnerUserId TEXT NOT NULL REFERENCES Users(Id),
+                RequestId TEXT NOT NULL,
+                ConversationId TEXT NULL,
+                EventType TEXT NOT NULL,
+                ElapsedMs INTEGER NOT NULL,
+                RedactedPayload TEXT NULL,
+                CreatedAt TEXT NOT NULL
+            );
+            CREATE INDEX IX_PipelineEvents_Owner_RequestId ON PipelineEvents(OwnerUserId, RequestId);
+            CREATE INDEX IX_PipelineEvents_CreatedAt ON PipelineEvents(CreatedAt);
             """)
     ];
+
+    // Version that introduced the Messages table (needed by the startup sweep).
+    private const int MessagesVersion = 2;
 
     private readonly string _connectionString;
 
@@ -70,8 +109,16 @@ public sealed class MiraDatabase
         return connection;
     }
 
-    public async Task MigrateAsync(CancellationToken cancellationToken = default)
+    // Applies every pending migration. Shared by the API host and the create-user command; it changes no rows.
+    public Task MigrateAsync(CancellationToken cancellationToken = default) =>
+        MigrateAsync(LatestVersion, cancellationToken);
+
+    // Applies pending migrations up to targetVersion. Used directly only by upgrade tests (for example to build an M1-shaped database).
+    public async Task MigrateAsync(int targetVersion, CancellationToken cancellationToken = default)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(targetVersion, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(targetVersion, LatestVersion);
+
         var directory = Path.GetDirectoryName(FilePath);
         if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
@@ -84,7 +131,7 @@ public sealed class MiraDatabase
         var current = await GetVersionAsync(connection, cancellationToken);
         foreach (var (version, sql) in Migrations)
         {
-            if (version <= current) continue;
+            if (version <= current || version > targetVersion) continue;
 
             await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
             await ExecuteAsync(connection, transaction, sql, cancellationToken);
@@ -96,6 +143,21 @@ public sealed class MiraDatabase
             await record.ExecuteNonQueryAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
+    }
+
+    // API startup only (MiraHost.InitializeMiraDatabaseAsync), after MigrateAsync and before requests are served: a message still
+    // Streaming was left by a crash or shutdown mid-turn, so it becomes Interrupted (and stays out of prompt context).
+    // Not run by create-user, which may execute while the API is serving a live turn. Returns the number of messages changed.
+    public async Task<int> InterruptStreamingMessagesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        if (await GetVersionAsync(connection, cancellationToken) < MessagesVersion) return 0;
+
+        await using var sweep = connection.CreateCommand();
+        sweep.CommandText = "UPDATE Messages SET Status = $interrupted WHERE Status = $streaming;";
+        sweep.Parameters.AddWithValue("$interrupted", nameof(MessageStatus.Interrupted));
+        sweep.Parameters.AddWithValue("$streaming", nameof(MessageStatus.Streaming));
+        return await sweep.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public static async Task<int> GetVersionAsync(SqliteConnection connection, CancellationToken cancellationToken = default)

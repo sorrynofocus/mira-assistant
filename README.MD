@@ -35,7 +35,7 @@ MIRA is STT 3.0. It grew out of the owner's earlier speech-to-text assistant and
 
 ### Status
 
-M0 (the local baseline) and M1 (local sign-in plus streamed chat against a mock model, with no paid AI connected) are done. M2 is next: saving conversations and adding a redacted pipeline inspector. It starts with a decision on the data layer, EF Core or plain SQLite ([ADR 0001](docs/decisions/0001-sqlite-access-without-ef-core.md)). The full milestone roadmap is in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
+M0 (the local baseline) and M1 (local sign-in plus streamed chat against a mock model, with no paid AI connected) are done. M2 (conversation persistence and a redacted pipeline inspector, on plain SQLite per [ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)) is implemented in this tree; details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). Personas, memory, voice, and web search come in later milestones. The full roadmap is in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
 
 
 ---
@@ -82,20 +82,20 @@ Then open <http://127.0.0.1:4321/> in your browser and sign in with that account
 
 ### What the pieces are
 
-MIRA is currently at milestone **M1**: local sign-in plus a streamed text chat against a mock model. Conversation persistence, persona editing, memory, voice, and web search come in later milestones.
+MIRA is currently at milestone **M2** (implemented, in review): local sign-in, a streamed text chat against a mock model, saved conversations (several per user), and a redacted pipeline inspector. Persona editing, memory, voice, and web search come in later milestones.
 
 - **Frontend: [Astro](https://astro.build/).** Builds a static web page. The page logic is plain (vanilla) TypeScript, with no React/Vue/Svelte. It runs on Node.js.
-- **Backend: ASP.NET Core Minimal API.** A small C# web server on .NET 10. It exposes `GET /health/live` (returns `{"status":"ok"}`), local username/password sign-in, and a streaming chat endpoint. Everything under `/api` requires a signed-in user except the sign-in and CSRF-token endpoints.
-- **Local database: SQLite.** Accounts and sessions are stored in a SQLite file outside the repository. Conversations are kept in memory in M1.
+- **Backend: ASP.NET Core Minimal API.** A small C# web server on .NET 10. It exposes `GET /health/live` (returns `{"status":"ok"}`), local username/password sign-in, a streaming chat endpoint, conversation endpoints, and read-only diagnostics for the inspector. Everything under `/api` requires a signed-in user except the sign-in and CSRF-token endpoints.
+- **Local database: SQLite.** Accounts, sessions, conversations, messages and inspector timing events are stored in a SQLite file outside the repository (`%LOCALAPPDATA%\MIRA\mira.db` by default). Inspector events never contain message text and are deleted after 30 days.
 - **Mock model providers.** Chat, transcription, and speech are behind replaceable interfaces. M1 uses only deterministic mocks, so you do not need Azure keys or any paid service.
-- **Tests: xUnit and Vitest.** .NET unit and integration tests for configuration, authentication, sessions, CSRF, streaming, storage, governance, and the API host; Vitest tests for the frontend stream parser and sign-out.
+- **Tests: xUnit and Vitest.** .NET unit and integration tests for configuration, authentication, sessions, CSRF, streaming, storage, governance, and the API host; Vitest tests for the frontend stream parser, sign-out, conversation list and inspector.
 
 | Folder | What it contains |
 | --- | --- |
-| `frontend/` | Astro static web UI (vanilla TypeScript): sign-in form, chat view, stream parser |
-| `backend/Mira.Api/` | ASP.NET Core Minimal API host: health, auth, chat streaming, CSRF/origin checks, loopback binding policy, `create-user` command |
-| `backend/Mira.Core/` | Contracts and options: provider, account, session, conversation, and governance interfaces; `Mira` settings |
-| `backend/Mira.Infrastructure/` | Implementations: SQLite accounts/sessions/audit log, in-memory conversations, mock providers, deny-all governance |
+| `frontend/` | Astro static web UI (vanilla TypeScript): sign-in form, chat view, conversation list, inspector panel, stream parser |
+| `backend/Mira.Api/` | ASP.NET Core Minimal API host: health, auth, chat streaming, conversations, diagnostics, inspector-event retention, CSRF/origin checks, loopback binding policy, `create-user` command |
+| `backend/Mira.Core/` | Contracts and options: provider, account, session, conversation, pipeline-event, and governance interfaces; `Mira` settings |
+| `backend/Mira.Infrastructure/` | Implementations: SQLite accounts/sessions/audit log, conversations and pipeline events; pipeline redactor and recorder; mock providers; deny-all governance |
 | `backend/Mira.Tests/` | xUnit tests |
 | `scripts/` | Windows CMD scripts: `dev.cmd` (run), `test.cmd` (build and test), `create-user.cmd` (create an account) |
 | `config/` | Example administrator governance file (`governance.example.md`) |
@@ -287,7 +287,7 @@ Limits:
 | Sign-in says `Invalid username or password.` | The username or password is wrong, or the account is disabled. The message is the same in every case by design, so it does not reveal which accounts exist. Check that you created the account (`scripts\create-user.cmd`) against the same database the API uses. |
 | Sign-in says `Too many failed attempts. Try again later.` (HTTP 429) | That username had 5 failed sign-ins (default) within 15 minutes and is locked out, even with the right password, until the window passes. The counter is kept in memory, so restarting the API also clears it. `Too many sign-in attempts. Wait a minute and try again.` means the per-IP limit of 20 sign-in requests per minute was hit; wait a minute. |
 | `Your session ended. Sign in again.` | Sessions end after 30 minutes without activity or 12 hours after sign-in (defaults), on sign-out, or if the account is disabled. Sign in again. |
-| Earlier messages are gone after restarting the API | Expected in M1: conversations are kept in memory and vanish when the API stops. Accounts persist. M2 adds conversation persistence. |
+| Earlier messages are gone after restarting the API | Since M2, conversations are saved in the SQLite database and survive restarts. If they are gone, check that `Mira:DatabasePath` (or `%LOCALAPPDATA%\MIRA\mira.db`) still points at the same file, and that the conversation wasn't deleted (deleting is permanent). A reply that was streaming when the API stopped shows as interrupted. |
 | `A response is already streaming. Wait for it to finish or stop it.` | Only one response per user can stream at a time. Wait for it to finish or press **Stop**. |
 | `create-user` prints `That username is already taken.` | Usernames are case-insensitive. Pick another name. |
 | API window shows an "address already in use" error, or the frontend picks a different port | Another program is using port 5080 or 4321. Find it with `netstat -ano \| findstr :5080` (or `:4321`); the last column is the process ID. Close that program, or end it with `taskkill /PID <pid>`. |
@@ -298,11 +298,13 @@ Limits:
 
 ## Project status and docs
 
-**M1 is implemented** (local authentication and mock streamed chat) and was reviewed by Codex. Details are in [the M1 authentication and streaming note](docs/M1_AUTH_AND_STREAMING.md). Conversation persistence, persona editing, memory, voice, and web search are scheduled in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
+**M2 is implemented** in this tree: multiple conversations per user are stored in SQLite, a page reload keeps history, and a hidden-by-default inspector shows redacted pipeline events and timings. Details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M2 uses plain SQLite ([ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)), not EF Core.
+
+**M1** (local authentication and mock streamed chat) and **M0** (the local baseline) remain the foundation; see [the M1 authentication and streaming note](docs/M1_AUTH_AND_STREAMING.md) and [the M0 architecture note](docs/M0_ARCHITECTURE.md). Persona editing, memory, voice, and web search are still scheduled in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
 
 The backend is local-only by design (loopback `127.0.0.1` only) and must not be exposed on a network yet.
 
-Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md).
+Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md).
 
 ## How the AI agents stay in sync
 

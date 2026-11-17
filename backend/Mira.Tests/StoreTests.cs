@@ -191,13 +191,14 @@ public sealed class StoreTests : IAsyncLifetime
         var store = new InMemoryConversationStore(_time);
         var alice = Guid.NewGuid();
         var bob = Guid.NewGuid();
-        await store.AppendUserMessageAsync(alice, "hello");
-        var reply = await store.BeginAssistantMessageAsync(alice, "mock");
+        var conversation = await store.GetMostRecentOrCreateAsync(alice);
+        await store.AppendUserMessageAsync(alice, conversation.Id, "hello", "r1");
+        var reply = await store.BeginAssistantMessageAsync(alice, conversation.Id, "mock", "r1");
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-            store.FinishAssistantMessageAsync(bob, reply.Id, "hijack", MessageStatus.Completed));
-        await Assert.ThrowsAsync<ArgumentException>(() => store.GetOrCreateAsync(Guid.Empty));
-        Assert.Empty((await store.GetOrCreateAsync(bob)).Messages);
+            store.FinishAssistantMessageAsync(bob, conversation.Id, reply.Id, "hijack", MessageStatus.Completed));
+        await Assert.ThrowsAsync<ArgumentException>(() => store.GetMostRecentOrCreateAsync(Guid.Empty));
+        Assert.Empty((await store.GetMostRecentOrCreateAsync(bob)).Messages);
     }
 
     [Fact]
@@ -205,11 +206,12 @@ public sealed class StoreTests : IAsyncLifetime
     {
         var store = new InMemoryConversationStore(_time);
         var owner = Guid.NewGuid();
-        await store.AppendUserMessageAsync(owner, "first");
-        var reply = await store.BeginAssistantMessageAsync(owner, "mock");
-        await store.FinishAssistantMessageAsync(owner, reply.Id, "half an ans", MessageStatus.Interrupted);
+        var conversation = await store.GetMostRecentOrCreateAsync(owner);
+        await store.AppendUserMessageAsync(owner, conversation.Id, "first", "r1");
+        var reply = await store.BeginAssistantMessageAsync(owner, conversation.Id, "mock", "r1");
+        await store.FinishAssistantMessageAsync(owner, conversation.Id, reply.Id, "half an ans", MessageStatus.Interrupted);
 
-        var turns = await store.GetPromptTurnsAsync(owner);
+        var turns = await store.GetPromptTurnsAsync(owner, conversation.Id);
         Assert.Equal([new ChatTurn(ChatRole.User, "first")], turns);
     }
 

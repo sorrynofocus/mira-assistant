@@ -1,30 +1,38 @@
-import { ApiError, getJson, postJson, postStream, refreshCsrfToken, setCsrfToken } from './api';
+import {
+  ApiError,
+  getJson,
+  postJson,
+  postStream,
+  refreshCsrfToken,
+  setCsrfToken,
+  type ConversationMessage,
+  type ConversationSnapshot,
+  type MessageStatus,
+  type ChatRole,
+} from './api';
+import {
+  ConversationWorkspace,
+  deleteConversationWithAbortPolicy,
+  focusConversationItem,
+  liveConversationClient,
+  renderConversationList,
+  selectConversationWithAbortPolicy,
+  shouldAbortActiveTurn,
+  syncLoadMoreButton,
+} from './conversations';
+import { InspectorController, liveInspectorClient, renderRequestLink } from './inspector';
 import { signOut } from './session';
 import { readSse, type ChatEnvelope } from './sse';
-
-type MessageStatus = 'streaming' | 'completed' | 'interrupted' | 'failed';
 
 interface User {
   id: string;
   username: string;
 }
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  status: MessageStatus;
-}
-
-interface Conversation {
-  id: string;
-  messages: Message[];
-}
-
 const STATUS_LABELS: Partial<Record<MessageStatus, string>> = {
   streaming: 'Responding…',
-  interrupted: 'Stopped',
-  failed: 'Error',
+  interrupted: 'Interrupted',
+  failed: 'Failed',
 };
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -43,6 +51,11 @@ const loginError = byId<HTMLElement>('login-error');
 const chatView = byId<HTMLElement>('chat-view');
 const whoami = byId<HTMLElement>('whoami');
 const logoutButton = byId<HTMLButtonElement>('logout-button');
+const workspaceBody = byId<HTMLElement>('workspace-body');
+const conversationList = byId<HTMLUListElement>('conversation-list');
+const conversationEmpty = byId<HTMLElement>('conversation-empty');
+const newChatButton = byId<HTMLButtonElement>('new-chat-button');
+const loadMoreButton = byId<HTMLButtonElement>('load-more-button');
 const messageList = byId<HTMLOListElement>('messages');
 const emptyState = byId<HTMLElement>('empty-state');
 const composer = byId<HTMLFormElement>('composer');
@@ -51,19 +64,54 @@ const sendButton = byId<HTMLButtonElement>('send-button');
 const stopButton = byId<HTMLButtonElement>('stop-button');
 const chatError = byId<HTMLElement>('chat-error');
 const announcer = byId<HTMLElement>('announcer');
+const inspectorToggle = byId<HTMLButtonElement>('inspector-toggle');
+const inspectorClose = byId<HTMLButtonElement>('inspector-close');
+const inspectorPanel = byId<HTMLElement>('inspector-panel');
 
 let activeStream: AbortController | null = null;
+
+const workspace = new ConversationWorkspace({
+  client: liveConversationClient,
+  confirmDelete: (message) => window.confirm(message),
+  onChange: paintSidebar,
+  onStatus: announce,
+  onError: (message) => showError(chatError, message),
+});
+
+const inspector = new InspectorController(
+  liveInspectorClient,
+  {
+    panel: inspectorPanel,
+    requests: byId('inspector-requests'),
+    events: byId('inspector-events'),
+    eventsSection: byId('inspector-events-section'),
+    empty: byId('inspector-empty'),
+    error: byId('inspector-error'),
+    firstToken: byId('inspector-first-token'),
+  },
+  announce,
+);
 
 function showError(target: HTMLElement, message: string | null): void {
   target.textContent = message ?? '';
   target.hidden = !message;
 }
 
+function announce(message: string): void {
+  announcer.textContent = message;
+}
+
 function showLogin(message: string | null = null): void {
+  stop();
+  setInspectorOpen(false);
+  inspector.reset();
   chatView.hidden = true;
   loginView.hidden = false;
+  visibleConversationId = null;
   messageList.replaceChildren();
+  conversationList.replaceChildren();
   showError(loginError, message);
+  showError(chatError, null);
   passwordInput.value = '';
   (usernameInput.value ? passwordInput : usernameInput).focus();
 }
@@ -73,15 +121,61 @@ async function showChat(user: User): Promise<void> {
   chatView.hidden = false;
   whoami.textContent = user.username;
   showError(chatError, null);
-  const conversation = await getJson<Conversation>('/api/conversations/current');
-  messageList.replaceChildren(...conversation.messages.map(renderMessage));
+  try {
+    await workspace.boot();
+  } catch (error) {
+    handleWorkspaceError(error);
+  }
+  if (!chatView.hidden) messageInput.focus();
+}
+
+let visibleConversationId: string | null = null;
+
+function paintSidebar(current: ConversationWorkspace): void {
+  const intent = current.consumeFocusIntent();
+  renderConversationList(conversationList, current.list, current.selectedId, {
+    onSelect: (id) => void runWorkspaceAction(() =>
+      selectConversationWithAbortPolicy(id, {
+        selectedId: workspace.selectedId,
+        abortTurn: stop,
+        select: (target) => workspace.select(target),
+      }),
+    ),
+    onBeginRename: (id) => current.beginRename(id),
+    onSubmitRename: (id, title) => void current.submitRename(id, title),
+    onCancelRename: () => current.cancelRename(),
+    onDelete: (id) => void runWorkspaceAction(() =>
+      deleteConversationWithAbortPolicy(id, {
+        selectedId: workspace.selectedId,
+        abortTurn: stop,
+        remove: (target, hooks) => workspace.remove(target, hooks),
+      }),
+    ),
+  }, current.renamingId);
+  conversationEmpty.hidden = current.list.length > 0;
+  syncLoadMoreButton(loadMoreButton, current.hasMore);
+  if (intent.type === 'conversation') focusConversationItem(conversationList, intent.id);
+  else if (intent.type === 'new-chat') newChatButton.focus();
+  if (current.selectedId !== visibleConversationId) {
+    visibleConversationId = current.selectedId;
+    loadMessages(current.selected);
+  }
+  void refreshInspector();
+}
+
+function loadMessages(selected: ConversationSnapshot | null): void {
+  if (!selected) {
+    messageList.replaceChildren();
+    updateEmptyState();
+    return;
+  }
+  messageList.replaceChildren(...selected.messages.map(renderMessage));
   updateEmptyState();
   scrollToEnd(true);
-  messageInput.focus();
 }
 
 // Model text is untrusted: it is only ever assigned via textContent, never parsed as HTML.
-function renderMessage(message: Pick<Message, 'role' | 'content' | 'status'>): HTMLLIElement {
+function renderMessage(message: Pick<ConversationMessage, 'role' | 'content' | 'status'> & { requestId?: string | null }): HTMLLIElement {
   const item = document.createElement('li');
   item.className = `message message--${message.role}`;
 
@@ -98,7 +192,21 @@ function renderMessage(message: Pick<Message, 'role' | 'content' | 'status'>): H
 
   item.append(author, body, status);
   setStatus(item, message.status);
+  if (message.requestId) attachInspect(item, message.requestId);
   return item;
+}
+
+function attachInspect(item: HTMLLIElement, requestId: string): void {
+  if (item.dataset.requestId) return;
+  item.dataset.requestId = requestId;
+  item.append(renderRequestLink(document, requestId, inspectRequest));
+}
+
+function inspectRequest(requestId: string): void {
+  setInspectorOpen(true);
+  void inspector.reveal(requestId, workspace.selectedId).catch((error) => {
+    handleWorkspaceError(error);
+  });
 }
 
 function setStatus(item: HTMLLIElement, status: MessageStatus): void {
@@ -129,15 +237,50 @@ function setStreaming(streaming: boolean): void {
   sendButton.disabled = streaming;
   stopButton.hidden = !streaming;
   stopButton.disabled = !streaming;
+  newChatButton.disabled = streaming;
   composer.setAttribute('aria-busy', String(streaming));
+}
+
+function setInspectorOpen(open: boolean): void {
+  inspector.setOpen(open);
+  workspaceBody.classList.toggle('is-inspector-open', open);
+  inspectorToggle.setAttribute('aria-expanded', String(open));
+  inspectorToggle.textContent = open ? 'Hide inspector' : 'Show inspector';
+  if (open) void refreshInspector();
+}
+
+async function refreshInspector(): Promise<void> {
+  if (!inspector.open) return;
+  await inspector.load(workspace.selectedId);
+}
+
+async function runWorkspaceAction(action: () => Promise<unknown>): Promise<void> {
+  try {
+    await action();
+  } catch (error) {
+    handleWorkspaceError(error);
+  }
+}
+
+function handleWorkspaceError(error: unknown): void {
+  if (error instanceof ApiError && error.status === 401) {
+    showLogin('Your session ended. Sign in again.');
+    return;
+  }
+  showError(chatError, error instanceof ApiError ? error.message : 'Could not update conversations.');
 }
 
 async function send(): Promise<void> {
   const text = messageInput.value;
+  const conversationId = workspace.selectedId;
   if (activeStream || text.trim().length === 0) return;
+  if (!conversationId) {
+    showError(chatError, 'Start a new chat before sending a message.');
+    return;
+  }
 
   showError(chatError, null);
-  const userItem = renderMessage({ role: 'user', content: text, status: 'completed' });
+  const userItem = renderMessage({ role: 'user' satisfies ChatRole, content: text, status: 'completed' });
   const assistantItem = renderMessage({ role: 'assistant', content: '', status: 'streaming' });
   messageList.append(userItem, assistantItem);
   updateEmptyState();
@@ -151,12 +294,16 @@ async function send(): Promise<void> {
   let finalStatus: MessageStatus = 'interrupted';
   let started = false;
   try {
-    const response = await postStream('/api/chat/stream', { message: text }, controller.signal);
+    const response = await postStream('/api/chat/stream', { message: text, conversationId }, controller.signal);
     started = true;
     messageInput.value = '';
 
     for await (const event of readSse(response.body!)) {
       const envelope = JSON.parse(event.data) as ChatEnvelope<{ text?: string; status?: MessageStatus; message?: string }>;
+      if (envelope.requestId) {
+        attachInspect(userItem, envelope.requestId);
+        attachInspect(assistantItem, envelope.requestId);
+      }
       switch (event.event) {
         case 'response.delta':
           appendText(assistantItem, envelope.data.text ?? '');
@@ -178,12 +325,24 @@ async function send(): Promise<void> {
     if (controller.signal.aborted) {
       finalStatus = 'interrupted';
     } else if (error instanceof ApiError && !started) {
-      // Nothing was saved for a refused request: remove the optimistic bubbles and keep the draft.
       userItem.remove();
       assistantItem.remove();
       updateEmptyState();
       if (error.status === 401) {
         showLogin('Your session ended. Sign in again.');
+        return;
+      }
+      if (error.status === 404) {
+        showError(chatError, 'That conversation is no longer available.');
+        announce('That conversation is no longer available.');
+        await workspace.refreshList().catch(() => undefined);
+        if (workspace.selectedId === conversationId) {
+          try {
+            await workspace.boot();
+          } catch (refreshError) {
+            handleWorkspaceError(refreshError);
+          }
+        }
         return;
       }
       showError(chatError, error.message);
@@ -192,10 +351,16 @@ async function send(): Promise<void> {
       showError(chatError, 'The connection to MIRA was lost.');
     }
   } finally {
-    setStatus(assistantItem, finalStatus);
-    activeStream = null;
-    setStreaming(false);
-    announcer.textContent = finalStatus === 'completed' ? 'Response complete.' : `Response ${STATUS_LABELS[finalStatus]?.toLowerCase() ?? finalStatus}.`;
+    if (assistantItem.isConnected) setStatus(assistantItem, finalStatus);
+    if (activeStream === controller) {
+      activeStream = null;
+      setStreaming(false);
+    }
+    if (assistantItem.isConnected) {
+      announcer.textContent =
+        finalStatus === 'completed' ? 'Response complete.' : `Response ${STATUS_LABELS[finalStatus]?.toLowerCase() ?? finalStatus}.`;
+      void refreshInspector();
+    }
     if (!chatView.hidden) messageInput.focus();
   }
 }
@@ -241,6 +406,30 @@ logoutButton.addEventListener('click', async () => {
   } finally {
     logoutButton.disabled = false;
   }
+});
+
+newChatButton.addEventListener('click', () => {
+  void runWorkspaceAction(async () => {
+    if (shouldAbortActiveTurn({ kind: 'createNew', selectedId: workspace.selectedId })) stop();
+    await workspace.createNew();
+  });
+});
+
+loadMoreButton.addEventListener('click', () => {
+  loadMoreButton.disabled = true;
+  void runWorkspaceAction(() => workspace.loadMore()).finally(() => {
+    loadMoreButton.disabled = false;
+    syncLoadMoreButton(loadMoreButton, workspace.hasMore);
+  });
+});
+
+inspectorToggle.addEventListener('click', () => {
+  setInspectorOpen(!inspector.open);
+});
+
+inspectorClose.addEventListener('click', () => {
+  setInspectorOpen(false);
+  inspectorToggle.focus();
 });
 
 composer.addEventListener('submit', (event) => {

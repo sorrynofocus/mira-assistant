@@ -34,23 +34,57 @@
           <p class="hint">No account yet? Create one from a terminal with <code>scripts\create-user.cmd &lt;name&gt;</code>.</p>
         </section>
 
-        <section id="chat-view" class="chat" aria-label="Conversation" hidden>
+        <section id="chat-view" class="workspace" aria-label="Chat workspace" hidden>
           <div class="chat__bar">
             <p>Signed in as <strong id="whoami"></strong></p>
-            <button id="logout-button" class="link-button" type="button">Sign out</button>
+            <div class="chat__bar-actions">
+              <button id="inspector-toggle" class="link-button" type="button" aria-expanded="false" aria-controls="inspector-panel">Show inspector</button>
+              <button id="logout-button" class="link-button" type="button">Sign out</button>
+            </div>
           </div>
 
-          <ol id="messages" class="messages" role="log" aria-label="Messages"></ol>
-          <p id="empty-state" class="empty">Send a message to start. Responses come from a mock model in this milestone.</p>
+          <div id="workspace-body" class="workspace__body">
+            <aside id="conversation-sidebar" class="sidebar" aria-labelledby="conversations-heading">
+              <div class="sidebar__toolbar">
+                <h2 id="conversations-heading">Conversations</h2>
+                <button id="new-chat-button" type="button">New chat</button>
+              </div>
+              <ul id="conversation-list" class="conversation-list" aria-label="Conversation list"></ul>
+              <button id="load-more-button" type="button" hidden aria-label="Load more conversations">Load more</button>
+              <p id="conversation-empty" class="empty" hidden>No conversations yet.</p>
+            </aside>
 
-          <form id="composer" class="composer">
-            <label for="message" class="visually-hidden">Message</label>
-            <textarea id="message" name="message" rows="2" placeholder="Message MIRA (Enter to send, Shift+Enter for a new line)"></textarea>
-            <div class="composer__actions">
-              <button id="stop-button" class="secondary" type="button" hidden>Stop</button>
-              <button id="send-button" type="submit">Send</button>
+            <div class="chat" aria-label="Conversation">
+              <ol id="messages" class="messages" role="log" aria-label="Messages"></ol>
+              <p id="empty-state" class="empty">Send a message to start. Responses come from a mock model in this milestone.</p>
+
+              <form id="composer" class="composer">
+                <label for="message" class="visually-hidden">Message</label>
+                <textarea id="message" name="message" rows="2" placeholder="Message MIRA (Enter to send, Shift+Enter for a new line)"></textarea>
+                <div class="composer__actions">
+                  <button id="stop-button" class="secondary" type="button" hidden>Stop</button>
+                  <button id="send-button" type="submit">Send</button>
+                </div>
+              </form>
             </div>
-          </form>
+
+            <aside id="inspector-panel" class="inspector" aria-labelledby="inspector-heading" hidden>
+              <div class="inspector__header">
+                <h2 id="inspector-heading">Inspector</h2>
+                <button id="inspector-close" class="link-button" type="button">Hide inspector</button>
+              </div>
+              <p class="inspector__hint">Timings and redacted event metadata only. Message text is never shown here.</p>
+              <p id="inspector-empty" class="empty">No recorded requests for this conversation.</p>
+              <ul id="inspector-requests" class="inspector-requests" aria-label="Recent requests"></ul>
+              <section id="inspector-events-section" class="inspector-events-section" aria-labelledby="inspector-events-heading" hidden>
+                <h3 id="inspector-events-heading">Events</h3>
+                <p id="inspector-first-token" class="inspector-first-token"></p>
+                <ol id="inspector-events" class="inspector-events" aria-label="Request events"></ol>
+              </section>
+              <p id="inspector-error" class="error" role="alert" hidden></p>
+            </aside>
+          </div>
+
           <p id="chat-error" class="error" role="alert" hidden></p>
         </section>
       </main>
@@ -69,17 +103,18 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: #121a2c; color: #f3f5fb; font-family: system-ui, sans-serif; }
   [hidden] { display: none !important; }
-  .shell { width: min(100% - 2rem, 52rem); margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 1.5rem 0; gap: 1.25rem; }
+  .shell { width: min(100% - 2rem, 86rem); margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 1.5rem 0; gap: 1.25rem; }
   .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
   h1 { font-size: 2.25rem; letter-spacing: -.04em; margin: 0; }
+  h2, h3 { font-size: 1rem; margin: 0; }
   .subtitle { margin: 0; color: #c5d0e8; font-size: .9rem; }
-  main { flex: 1; display: flex; flex-direction: column; }
+  main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .card { background: #1b2841; border: 1px solid #344665; border-radius: 1rem; padding: clamp(1.25rem, 5vw, 2rem); }
   .login { max-width: 26rem; width: 100%; margin: 2rem auto 0; }
-  .login h2 { margin-top: 0; }
+  .login h2 { margin-top: 0; font-size: 1.5rem; }
   form label { display: block; font-weight: 600; margin: .9rem 0 .35rem; }
   input, textarea { width: 100%; font: inherit; color: inherit; background: #0f1626; border: 1px solid #4a5f86; border-radius: .55rem; padding: .65rem .75rem; }
-  input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   button { background: #9bb9ff; color: #101b31; border: 0; border-radius: .55rem; padding: .65rem 1.1rem; font: inherit; font-weight: 700; cursor: pointer; }
   button:hover:not(:disabled) { background: #bfd1ff; }
   button:disabled { opacity: .55; cursor: not-allowed; }
@@ -94,9 +129,28 @@
   .indicator { width: .7rem; height: .7rem; background: #d6a45c; border-radius: 50%; }
   .status[data-state="online"] .indicator { background: #76d7a5; }
   .status[data-state="offline"] .indicator { background: #f28c8c; }
-  .chat { flex: 1; display: flex; flex-direction: column; gap: .75rem; min-height: 0; }
-  .chat__bar { display: flex; align-items: center; justify-content: space-between; color: #c5d0e8; }
+  .workspace { flex: 1; display: flex; flex-direction: column; gap: .75rem; min-height: 0; }
+  .workspace__body { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 1rem; align-items: stretch; flex: 1; min-height: 0; }
+  .workspace__body.is-inspector-open { grid-template-columns: 16rem minmax(0, 1fr) 20rem; }
+  .chat__bar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: #c5d0e8; }
   .chat__bar p { margin: 0; }
+  .chat__bar-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .sidebar, .inspector { background: #1b2841; border: 1px solid #344665; border-radius: 1rem; padding: .85rem; display: flex; flex-direction: column; gap: .65rem; min-height: 16rem; max-height: calc(100dvh - 16rem); overflow: hidden; }
+  .sidebar__toolbar, .inspector__header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .sidebar__toolbar button { padding: .4rem .7rem; font-size: .85rem; }
+  .conversation-list, .inspector-requests, .inspector-events { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+  #load-more-button { width: 100%; padding: .45rem .7rem; font-size: .85rem; }
+  .message__inspect { display: inline-block; margin-top: .4rem; font-size: .8rem; }
+  .conversation-item { display: flex; flex-direction: column; gap: .25rem; padding: .35rem 0; border-bottom: 1px solid #344665; }
+  .conversation-item__title { text-align: left; width: 100%; background: transparent; color: inherit; font-weight: 600; padding: .45rem .55rem; }
+  .conversation-item__title:hover:not(:disabled) { background: #243657; }
+  .conversation-item.is-selected .conversation-item__title { background: #2c4d86; }
+  .conversation-item__actions { display: flex; gap: .35rem; padding: 0 .25rem; }
+  .conversation-item__actions .link-button { font-size: .8rem; }
+  .conversation-item__rename { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+  .conversation-item__rename input { flex: 1 1 8rem; padding: .4rem .5rem; }
+  .conversation-item__rename button { padding: .35rem .6rem; font-size: .8rem; }
+  .chat { flex: 1; display: flex; flex-direction: column; gap: .75rem; min-height: 0; }
   .messages { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 16rem; max-height: calc(100dvh - 22rem); overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; }
   .message { max-width: 85%; padding: .7rem .9rem; border-radius: .9rem; line-height: 1.55; }
   .message--user { align-self: flex-end; background: #2c4d86; }
@@ -105,13 +159,27 @@
   .message__body { white-space: pre-wrap; overflow-wrap: anywhere; }
   .message__status { display: inline-block; margin-top: .35rem; font-size: .75rem; font-weight: 700; color: #d6a45c; }
   .message[data-status="failed"] .message__status { color: #f28c8c; }
+  .message[data-status="interrupted"] .message__status { color: #d6a45c; }
   .message[data-status="streaming"] .message__body:empty::after { content: "…"; color: #a9b8db; }
-  .empty { color: #a9b8db; text-align: center; margin: 2rem 0; }
+  .empty { color: #a9b8db; text-align: center; margin: .5rem 0; }
   .composer { display: flex; gap: .6rem; align-items: flex-end; }
   .composer textarea { resize: vertical; min-height: 3rem; max-height: 14rem; }
   .composer__actions { display: flex; gap: .5rem; }
+  .inspector__hint { margin: 0; color: #a9b8db; font-size: .8rem; line-height: 1.4; }
+  .inspector-request { margin: 0 0 .4rem; }
+  .inspector-request__button { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; width: 100%; text-align: left; background: #0f1626; color: inherit; font-weight: 600; padding: .5rem .6rem; }
+  .inspector-request.is-selected .inspector-request__button { background: #2c4d86; }
+  .inspector-request__id { font-family: ui-monospace, monospace; font-size: .8rem; overflow-wrap: anywhere; }
+  .inspector-request__meta, .inspector-event, .inspector-first-token { font-size: .8rem; color: #c5d0e8; }
+  .inspector-events-section { display: flex; flex-direction: column; gap: .4rem; min-height: 0; }
+  .inspector-event { display: grid; gap: .15rem; padding: .45rem 0; border-bottom: 1px solid #344665; }
+  .inspector-event__type { font-weight: 700; color: #f3f5fb; }
   footer { color: #a9b8db; font-size: .8rem; }
   .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  @media (max-width: 60rem) {
+    .workspace__body, .workspace__body.is-inspector-open { grid-template-columns: 1fr; }
+    .sidebar, .inspector { max-height: none; }
+  }
   @media (max-width: 36rem) {
     .composer { flex-direction: column; align-items: stretch; }
     .composer__actions { justify-content: flex-end; }

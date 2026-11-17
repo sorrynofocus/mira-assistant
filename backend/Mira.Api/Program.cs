@@ -1,6 +1,5 @@
 using Mira.Api;
 using Mira.Core;
-using Mira.Infrastructure.Sqlite;
 
 if (args is [AccountCommands.CreateUserCommand, ..])
 {
@@ -15,7 +14,7 @@ builder.AddMiraWeb();
 var app = builder.Build();
 LocalBindingPolicy.Validate(app.Configuration);
 app.Services.GetRequiredService<MiraOptions>();
-await app.Services.GetRequiredService<MiraDatabase>().MigrateAsync();
+await app.InitializeMiraDatabaseAsync();
 
 app.MapMiraEndpoints();
 

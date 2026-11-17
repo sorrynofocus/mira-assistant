@@ -89,11 +89,12 @@ data: {"v":1,"requestId":"3f2c9a0d6b7e4c1f8a5b2d9e0c4f7a1b","conversationId":"6d
 
 - `provider_error`: the provider threw. Status `failed`; message `The model provider failed to complete the response.` Only the exception type is logged, since provider messages may echo conversation content.
 - `timeout`: the turn ran longer than `Mira:Chat:MaxResponseSeconds` (default 120). Status `interrupted`; message `The response took too long and was stopped.`
+- `conversation_deleted` (added in M2): the conversation was permanently deleted while the turn was running. Status `interrupted`; message `This conversation was deleted, so the reply was discarded.` Sent instead of `response.completed`, `response.cancelled`, or another error, and no pipeline events of that request are kept.
 
 Behavior:
 
 - **Client abort:** if the browser aborts the fetch (the UI's Stop button and Esc do this), the provider is cancelled, the partial text is saved with status `interrupted`, and no further event is sent, since nobody is listening.
-- **One in-flight turn per user** (`ActiveTurnRegistry`): a second send while one is streaming gets `409` before any stream starts. `/api/chat/cancel` cancels the caller's own active turn and returns `cancelled: false` when there is none.
+- **One in-flight turn per user** (`ActiveTurnRegistry`): a second send while one is streaming gets `409` before any stream starts. `/api/chat/cancel` cancels the caller's own active turn and returns `cancelled: false` when there is none. Since M2, deleting the conversation also cancels its active turn and frees the slot.
 - **Message statuses:** `streaming` (assistant message created when the turn starts), then exactly one of `completed`, `interrupted`, or `failed`. User messages are stored as `completed`. The backend owns persistence; partial output is never shown as completed.
 - **Prompt context:** each turn sends all user messages plus only `completed` assistant replies, oldest first. Interrupted and failed assistant text is excluded from later prompts.
 - **Mock provider:** `MockChatProvider` streams `MIRA mock response to "<your message, up to 60 text elements>". No model was called.` word by word with `Mira:Chat:MockDelayMilliseconds` (default 40) between words. A message containing `[mock-error]` makes it fail after the first delta, which exercises the `provider_error` path.

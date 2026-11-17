@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived to `docs/review-archive/M0-M1.md` (archive staged 2026-11-16, not yet committed); M2 (conversation persistence and inspector) planned, implementation starting; data layer = plain SQLite (ADR 0002)
-- **Working branch/commit:** `main` at `fba5480` (= `origin/main`); archive, ADR 0002 and M2 INTENT staged, uncommitted, awaiting the owner's commit approval; no push authorized
-- **Last verified build:** 2026-11-16 21:47 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), the `scripts\test.cmd` steps run directly: build 0 warnings/0 errors, 62/62 xUnit, 12/12 Vitest, Astro check 0/0/0, build 1 page. Windows: `scripts\test.cmd` passed 2026-11-16 (Claude 20:36, Codex 21:21). Requires Node >=22.23.4
-- **Open blockers:** none for M2 start (owner answered the M2 scope questions at 21:52 MST). Pending: owner approval of the staged documentation commit (owner said not yet); a different agent's archive VERIFICATION (protocol step 5)
-- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss); Reviewer = Grok Reviewer (a separate Grok bot outside the Implementer team); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
-- **Next concrete action:** Grok team implements M2 per the 2026-11-16 21:55 INTENT; the Grok Reviewer verifies the M0-M1 archive
-- **Turn:** Grok team (Implementer), M2 persistence and inspector per the 2026-11-16 21:55 INTENT (Grok Reviewer side job: verify the M0-M1 archive)
+- **Milestone:** M0-M1 closed and archived (`216aa86`; archive VERIFICATION PASS, MIRA Reviewer 21:58). M2 (conversation persistence and inspector) implemented and verified (22:34 and 23:06 VERIFICATION PASS), committed locally as one commit on top of `216aa86` (23:10 DECISION); not accepted until the Windows manual browser/keyboard pass; data layer = plain SQLite (ADR 0002)
+- **Working branch/commit:** `main` = the M2 commit on top of `216aa86` (local, 2 ahead of `origin/main` = `fba5480`); owner approved, directly to MIRA Boss at 23:04, committing M2 and pushing to `origin main` (this push only; later pushes need fresh approval)
+- **Last verified build:** 2026-11-16 23:10 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), `scripts\test.cmd` steps run directly with M2 + review fixes: npm ci 0 vulnerabilities, 36/36 Vitest, Astro check 0/0/0, build 1 page, dotnet build --no-incremental 0 warnings/0 errors, 140/140 xUnit. Windows not yet rerun with M2. Requires Node >=22.23.4
+- **Open blockers:** none. Pending: the owner-approved push of M2 to `origin main` (MIRA Boss); Windows manual browser/keyboard pass before M2 acceptance; deferred Minor: tests for a cross-user delete during a stream and for the provider-ignores-cancel 5 s timeout
+- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
+- **Next concrete action:** MIRA Boss pushes the M2 commit to `origin main` (owner-approved, this push only), then the owner runs the Windows manual browser/keyboard pass
+- **Turn:** MIRA Boss (Implementer lead), push the M2 commit to `origin main` per the 2026-11-16 23:10 DECISION, then hand to Owner for the manual pass
 
 ---
 
@@ -496,3 +496,490 @@ Untouched by M2: `Accounts.cs`, `Sessions.cs`, `Governance.cs`, auth endpoints a
 **Decisions needed from the owner:** None for M2 scope. The staged documentation commit waits for the owner's approval (the owner said not to commit yet). M2 code commits will need their own approval after review.
 
 **Next turn:** Grok team (Implementer), implement M2 per this INTENT (chunk 0 first, then A–E in parallel), then append one IMPLEMENTATION entry for the Grok Reviewer. Side job for the Grok Reviewer bot (outside the team) meanwhile: verify the M0-M1 archive per protocol step 5 and append a VERIFICATION entry. The staged documentation change stays uncommitted until the owner approves a commit (the owner said not to commit yet).
+
+---
+
+## 2026-11-16 21:58 MST | MIRA Reviewer | VERIFICATION
+
+**Objective:** Do protocol step 5 ("Confirm the archive with a second agent") for the M0-M1 close. MIRA Boss asked for this directly as the Reviewer's side job named on the Turn line. I only read files; this entry is my only edit.
+
+**Branch and commit:** `main` at `216aa86` (parent `fba5480`), compared against `fba5480:REVIEW.md`. I did not commit this entry; it waits for the owner's approval of the next commit.
+
+**Files examined:** `fba5480:REVIEW.md`; `REVIEW.md` and `docs/review-archive/M0-M1.md` at `216aa86` (also before the commit, when staged); `docs/agent-sync/AGENT_SYNC.md` "Clearing at milestone close".
+
+**Findings:**
+- **Archive: PASS.** No Blocker or Major finding.
+- Moved text is byte-identical. `fba5480:REVIEW.md` lines 45-577 match `docs/review-archive/M0-M1.md` lines 3-535 exactly (`cmp`). The trailing separator at old lines 578-580 was correctly left out. The archive has its one-line header and ends with a newline.
+- Live entries are byte-identical. Old lines 581-888 (10 entries, "2026-10-31 | Claude | ROLE CHANGE" through "2026-11-16 21:36 MST | Claude | DECISION + ROLE CHANGE + COMMIT") match `216aa86:REVIEW.md` lines 45-352, plus the separator before the 21:50 entry. The entry template is unchanged.
+- Headings: the old log has 27 entries. 17 are archived ("Initial handoff | ARCHITECTURE" through "2026-10-31 15:05 MST | Codex | REVIEW") and 10 stay live. Each appears exactly once, in the original order.
+- Carry-over list: I checked every severity-tagged finding and every open or deferred item in the archive. The 21:50 MILESTONE CLOSE covers them all. The M0 governance-contract deferral was met in M1 (archive, "2026-10-17 | Claude | IMPLEMENTATION"). The `.gitignore` `REVIEW.md` question was settled by the owner (archive, "2026-10-17 | Claude | ROLE CHANGE").
+- `216aa86` changes only the six documentation files listed in the 21:50 entry.
+- **Name clarification:** "Grok Reviewer" in the committed 21:50 and 21:55 entries means **MIRA Reviewer** (this bot). Those entries stay as written because this log is append-only. MIRA Boss has corrected the status header in the working tree.
+- **[Question → agreed]** "2026-10-31 | Claude | ROLE CHANGE" is still live. The 21:36 and 21:50 role changes have replaced it, so step 1 would allow archiving it. I accept keeping it live for now under "when in doubt, keep it live". It must be archived at M2 close.
+- **[Minor]** The status header in the working tree still says "`main` at `fba5480` ... staged, uncommitted" (line 7) and lists "approval of the staged documentation commit" and "archive VERIFICATION" as pending (line 9). That is out of date now that `216aa86` exists and this entry is recorded. Implementer should refresh it in the next header update.
+
+**Commands run and results:**
+```text
+git show fba5480:REVIEW.md | sed -n '45,577p'  vs  tail -n +3 docs/review-archive/M0-M1.md   PASS (cmp identical)
+git show fba5480:REVIEW.md | sed -n '581,888p' vs  216aa86:REVIEW.md lines 45-352            PASS (identical + separator)
+rg '^## ' across old, archive, live                                                          PASS (27 = 17 + 10, each once)
+git show 216aa86:<file> vs previously verified staged copies                                 PASS (byte-identical)
+git diff --stat fba5480 216aa86                                                              6 docs files only
+```
+
+**Security/privacy concerns:** None. This change is documentation only. The archive holds no credentials or private conversation data, and only test-fixture passwords are referenced.
+
+**Decisions needed from the owner:** None for the archive. Committing this entry needs the owner's approval, given directly to the committing agent.
+
+**Next turn:** Grok team (Implementer), M2 per the 2026-11-16 21:55 INTENT; refresh header lines 7 and 9. The M0-M1 close is fully verified.
+
+---
+
+## 2026-11-16 22:20 MST | Grok (MIRA Boss, team lead) | IMPLEMENTATION
+
+**Objective:** M2, conversation persistence and inspector, implemented per the 2026-11-16 21:55 INTENT (with the owner's 21:52 scope answers). This is the Grok team's single summary entry; hand-offs between bots inside the team were not logged, per "Self-coordinating agent teams". On-Turn work.
+
+**Contributors (all Grok bots):** MIRA Backend: chunks A (SQLite storage) and B (recording and redaction). MIRA Frontend: chunks D (frontend) and E (docs). MIRA Boss: chunk 0 (contracts), chunk C (API), two fixes in A/B after team review, README updates and integration. Cross-checks between team bots are not the independent review; that is the MIRA Reviewer's job.
+
+**Branch and commit:** `main` at `216aa86` (local; `origin/main` = `fba5480`). All M2 work is **uncommitted** in the working tree (`git status`; review with `git diff` plus the untracked files below). Nothing pushed.
+
+**Files changed:**
+- Core: `backend/Mira.Core/Conversations.cs` (multi-conversation, owner-scoped `IConversationStore`; `RequestId` on messages; `ConversationLimits`), new `backend/Mira.Core/PipelineEvents.cs` (event types, error codes, `PipelineEventData` allowlist, 30-day retention, redactor/recorder/store interfaces).
+- Infrastructure: `Sqlite/MiraDatabase.cs` (migrations 2 and 3, `MigrateAsync(int)` for upgrade tests, separate `InterruptStreamingMessagesAsync`), new `Sqlite/SqliteConversationStore.cs`, new `Sqlite/SqlitePipelineEventStore.cs`, new `Pipeline/PipelineRedactor.cs`, new `Pipeline/PipelineRecorder.cs`, new `Pipeline/InMemoryPipelineEventStore.cs`, `InMemoryConversationStore.cs` (new contract; now a test double only).
+- API: `Chat/ChatEndpoints.cs` (optional `conversationId`, pipeline recording, `/conversations/current` full shape), new `Conversations/ConversationEndpoints.cs`, new `Diagnostics/DiagnosticsEndpoints.cs`, new `Diagnostics/PipelineRetentionService.cs`, `MiraHost.cs` (DI, routes, `InitializeMiraDatabaseAsync`), `Program.cs`.
+- Tests: `StoreTests.cs`, `ChatStreamTests.cs`, `TestSupport.cs`, new `ConversationStoreTests.cs`, `PipelineRedactionTests.cs`, `ConversationApiTests.cs`, `DiagnosticsApiTests.cs`.
+- Frontend: `frontend/src/pages/index.astro`, `scripts/api.ts`, `scripts/chat.ts`, new `scripts/conversations.ts` (+ `conversations.test.ts`), new `scripts/inspector.ts` (+ `inspector.test.ts`).
+- Docs: new `docs/M2_PERSISTENCE_AND_INSPECTOR.md`, new `docs/M2_CHUNKS.md` (team briefs and the final API contract), `README.MD` (status sections, "What the pieces are", folder table, troubleshooting row about messages after restart).
+- `REVIEW.md`: this entry and the status header (also refreshes header lines 7 and 9, the Reviewer's 21:58 Minor).
+
+**What M2 delivers (against the INTENT's acceptance list):**
+- Reload and restart keep completed messages; interrupted and failed replies keep their status (tests `MessagesPersistInTheChosenConversationAcrossAnApiRestart`, store tests; smoke test below).
+- Request IDs correlate the SSE events, both messages of a turn and every pipeline event (`ATurnRecordsCorrelatedRedactedEvents`, restart test).
+- Another user's conversations, messages, requests and `conversationId` on chat/stream are 404 (`AnotherUsersConversationIsNotFoundForEveryOperation`, `RequestListIsOwnerScopedAndBounded`, store owner tests).
+- The inspector shows timings and first-token latency and holds no message text, credentials or tokens (redaction tests, API tests that search served and stored events for the sent text, smoke DB check).
+- Several conversations per user with list/new/switch/rename/delete; delete is permanent (conversation, messages, its pipeline events) with a confirmation prompt in the UI; events kept 30 days, purged at startup and every 24 h (owner answers 6-8).
+
+**Deviations from the INTENT (for review):**
+1. **ModelId is an allowlist, not a pattern.** The planned regex let identifier-shaped secrets through (flagged by MIRA Backend). `PipelineRedactor` now takes the configured model IDs (the host passes the registered `IChatProvider.ModelId`); any other value is stored as the literal `"unlisted"`; a malformed configured ID is a startup error.
+2. **Startup sweep split from migration.** `MigrateAsync` changes no rows; `InterruptStreamingMessagesAsync` runs only from `MiraHost.InitializeMiraDatabaseAsync` (API startup), not from `create-user`, which could otherwise interrupt a live turn.
+3. **Extra files:** `Pipeline/InMemoryPipelineEventStore.cs` (test double) and `Diagnostics/PipelineRetentionService.cs` (the purge schedule needed a home); `docs/M2_CHUNKS.md` (team briefs).
+4. **`GET /api/conversations/current`** now returns the full conversation shape `{id, title, createdAt, updatedAt, messages}`, same as by id (was `{id, messages}`); the frontend uses it as a fallback on reload.
+5. **Messages carry `requestId`** in API JSON (and a `RequestId` column), so the UI can open the inspector on a message's request.
+6. **No auto-titles:** new conversations have `title: null`; the UI shows "New chat". Rename sets a title; blank clears it.
+7. Minor API details: malformed request IDs are 404, not 400; `POST /api/conversations` accepts an empty body; `PATCH` requires `{title}`; diagnostics `data` always has all nine allowlist keys (null when unused).
+8. The selected conversation ID is remembered in `localStorage` (`mira.selectedConversationId`); an ID only, no content.
+
+**Commands run and results (Linux box: .NET SDK 10.0.404, Node v24.22.1, npm 11.21.1; `scripts\test.cmd` steps run directly):**
+```text
+npm --prefix frontend ci                         PASS: 0 vulnerabilities
+npm --prefix frontend test (vitest run)          PASS: 27/27 in 4 files
+npm --prefix frontend run check                  PASS: 14 files, 0 errors, 0 warnings, 0 hints
+npm --prefix frontend run build                  PASS: 1 page
+npm --prefix frontend audit                      PASS: 0 vulnerabilities
+dotnet build backend/Mira.sln -m:1 --no-incremental   PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1 (x2)     PASS: 134/134 both runs (M1 had 62)
+```
+**Smoke test** (built API on 127.0.0.1:5080 with `Mira__DatabasePath=/tmp/mira-smoke/mira.db`, `astro dev` on 127.0.0.1:4321, all calls with curl through the Astro proxy; synthetic user and text):
+```text
+create-user --password-stdin                     PASS (user created in the temp DB)
+/health/live via API and via proxy; GET /        PASS ({"status":"ok"}; 200)
+csrf -> login                                    PASS
+POST /api/conversations {}                       201, title null
+POST /api/chat/stream {message, conversationId}  started, 11 deltas, completed
+PATCH title / GET by id / GET current            200 "Smoke test"; 2 completed messages with requestId; current = same id
+GET /api/conversations?take=10                   200 {items, skip, take, hasMore:false}
+GET /api/diagnostics/{rid}                       request.started, response.first_token, response.completed; sent text not present
+GET /api/diagnostics?conversationId=             200, one item (firstTokenMs 80, totalMs 495)
+DELETE without X-CSRF-TOKEN                      403
+DELETE / GET after / diagnostics after           204 / 404 / 404 (events removed with the conversation)
+second turn, DB check                            PipelineEvents 3 rows, 0 containing the sent text; payload is counts/timings/"mock-chat" only
+API restart on same DB, GET current              2 messages, both completed (persisted)
+API and frontend logs                            no sent text, no password
+```
+Processes stopped afterwards; the temp DB is outside the repository.
+
+**Not done or not verified:**
+- No browser-driven check: the UI flows (sidebar, rename, delete confirmation, inspector toggle, keyboard-only use) are covered by Vitest and code review only. The manual browser and keyboard pass from the INTENT's test plan is still owed, ideally on the owner's Windows machine with `scripts\dev.cmd`. No screen-reader check (carried to M8).
+- Not run on Windows; `scripts\test.cmd` should pass there unchanged (no script changes).
+- The optional `ApiHostTests` `0.0.0.0:5081` nit (M0-M1 carry-over) is unchanged.
+
+**Checklist (AGENTS.md):** scope is M2 only; build and tests pass (above); no credentials, real conversation data, DB files or persona committed (scan below); security, privacy and accessibility reviewed (below); public interfaces documented (`docs/M2_PERSISTENCE_AND_INSPECTOR.md`, `docs/M2_CHUNKS.md` contract); this entry has evidence and a Next turn line.
+
+**Security/privacy concerns:**
+- Owner ID from the principal only; every SQL statement filters by owner; parameterized SQL only; 404 for others' resources; CSRF and same-origin checks cover all new unsafe routes (tests and smoke).
+- Message text and titles are private data at rest in the local SQLite file (file ACLs; no encryption at rest yet, handoff §13 item 3). Delete is permanent, as the owner chose.
+- Pipeline events: allowlisted counts, timings, status, configured model ID or `"unlisted"`, fixed error codes. Logging keeps M1's rule (IDs and exception types only); the recorder and retention service log exception types only.
+- No new dependency, paid service, network call, persona or governance capability. Frontend renders server text with `textContent` only.
+- Diff scan: no API-key, token, private-key or connection-string patterns; no `*.db`, `.env` or `appsettings.Local.json` added; test passwords and texts are synthetic fixtures.
+
+**Reviewer focus suggestions:** owner scoping in `SqliteConversationStore` and `SqlitePipelineEventStore` (every query); `ChatEndpoints` outcome paths (one terminal event each, conversation deleted mid-turn, `CancellationToken.None` writes); the redactor allowlist and anything that could put text into `PipelineEventData`; migration 2/3 SQL and the M1-upgrade test; the delete transaction; frontend `conversations.ts`/`inspector.ts`/`chat.ts` (escaping, delete confirmation, stale-selection handling, focus and `aria-live`); docs accuracy against the code.
+
+**Decisions needed from the owner:** After the MIRA Reviewer's review (and any resolution), approve a local commit of the M2 code, given directly to MIRA Boss. No push is requested.
+
+**Next turn:** MIRA Reviewer (Reviewer), review M2: inspect the actual diff against `216aa86` plus untracked files, rerun the build and tests, and append a REVIEW with findings by severity.
+
+---
+
+## 2026-11-16 22:24 MST | MIRA Reviewer | REVIEW
+
+**Objective:** Independent review of M2 (conversation persistence and inspector), as named in the 2026-11-16 22:20 IMPLEMENTATION entry. MIRA Boss handed the Turn to the Reviewer. I inspected the actual diff and the untracked files, reran the `scripts\test.cmd` steps and ran a live repro against a temp database. The only file I wrote is this entry. No code was edited, staged or committed.
+
+**Branch and commit:** `main` at `216aa86`. M2 is uncommitted in the working tree: 14 modified files and 16 untracked (`git status` shows 30 entries; `git diff --stat` shows 14 files, +1042/-158). Nothing pushed.
+
+**Files examined:** `Mira.Core/Conversations.cs`, `Mira.Core/PipelineEvents.cs`; `Mira.Infrastructure/Sqlite/{MiraDatabase,SqliteConversationStore,SqlitePipelineEventStore}.cs`, `Pipeline/{PipelineRedactor,PipelineRecorder}.cs`; `Mira.Api/Chat/ChatEndpoints.cs`, `Conversations/ConversationEndpoints.cs`, `Diagnostics/{DiagnosticsEndpoints,PipelineRetentionService}.cs`, `MiraHost.cs`, `Program.cs`, `Security/RequestSecurity.cs`; the test names and the key bodies in `ConversationStoreTests.cs`, `ConversationApiTests.cs`, `ChatStreamTests.cs`, `DiagnosticsApiTests.cs`; `frontend/src/pages/index.astro`, `scripts/{chat,conversations,inspector,api}.ts`, `conversations.test.ts`; `docs/M2_PERSISTENCE_AND_INSPECTOR.md`; the 21:55 INTENT and the 22:20 IMPLEMENTATION.
+
+**Findings:**
+
+- **[Major] Deleting a conversation during a streaming turn leaves pipeline events behind, and the client is told the reply completed.**
+  - Where: `backend/Mira.Api/Chat/ChatEndpoints.cs:117-118, 139-149, 169-177` (also 182-209); `Sqlite/SqliteConversationStore.cs:100-124`.
+  - Evidence: `DeleteAsync` removes the events that exist when it runs. `FinishAsync` then swallows the `KeyNotFoundException`, and the terminal `Record(...)` still inserts an event carrying the deleted `ConversationId`. Live repro (API on 127.0.0.1:5080, temp DB `/tmp/m2rev`, mock delay 200 ms, synthetic user; started a stream, then DELETE after 0.8 s):
+    - DELETE returned 204, and 0 Conversations rows and 0 Messages rows remained.
+    - One `PipelineEvents` row (`response.completed`) remained for the deleted conversation.
+    - `GET /api/diagnostics/{requestId}` returned **200** with that event.
+    - The SSE stream ended with `response.completed` `status: completed`, but nothing was saved.
+    - This contradicts the owner's "permanent delete" decision, the INTENT acceptance list, and docs §4 line 115 ("404 if … deleted with its conversation") and §7. The payload holds metadata only (no text), and the 30-day purge eventually removes it. No test covers deleting mid-turn.
+  - Related: `GetPromptTurnsAsync` and `BeginAssistantMessageAsync` (lines 120-121) run outside the try block. A delete that lands between `AppendUserMessageAsync` and `BeginAssistantMessageAsync` throws an unhandled `KeyNotFoundException` (500, no terminal event). I found this by reading the code; the timing was too narrow to reproduce.
+  - Expected: after a delete, no events or messages for that conversation survive, and the client isn't told the reply was saved.
+  - Suggested fix:
+    - Have `FinishAsync` return whether the conversation still exists. If it is gone, skip the terminal `Record` (or delete the request's events again) and send `response.error` with a fixed code such as `conversation_deleted`.
+    - Alternatively, cancel the owner's active turn inside the delete endpoint.
+    - Move lines 120-121 into the guarded path, mapping `KeyNotFoundException` to 404 before streaming.
+    - Add an API test that deletes during a slow stream and asserts zero events and a 404 from diagnostics.
+
+- **[Major] Load more, cancelling a delete, or re-clicking the open conversation aborts an in-flight reply.**
+  - Where: `frontend/src/scripts/chat.ts:132, 136, 238-245, 397-403`; `conversations.ts:270-271, 330-333`.
+  - Evidence: `changeConversation()` calls `stop()` (`activeStream.abort()`) before running the action. `onDelete`, `loadMore` and `onSelect` all go through it. So:
+    - Pressing Delete and then **Cancel** on the confirmation prompt still aborts the stream. The server records a client abort, and the reply is saved as `Interrupted` and dropped from later prompt context.
+    - **Load more** (which only pages the list) does the same.
+    - Clicking the already-selected conversation does the same; `select` returns early, but only after `stop()` has run.
+    - "Cancelling the prompt leaves it in place" (docs §9 step 6) holds for the conversation, but the prompt still has a destructive side effect. Vitest tests `ConversationWorkspace` in isolation, so this wiring is untested.
+  - Expected: only an actual switch away from a streaming conversation, or a confirmed delete of it, stops the reply. Load more and a cancelled prompt never do.
+  - Suggested fix: call `stop()` only after confirmation (pass a callback into `remove`, or confirm in `chat.ts` first), and only when the selected id actually changes. Don't use `changeConversation` for Load more. Alternatively, disable the list actions while streaming, as New chat already does. Add a test.
+
+- **[Minor] Keyboard focus is lost after select, rename or delete in the sidebar (and after selecting an inspector request).**
+  - Where: `frontend/src/scripts/conversations.ts:131-180` (`list.replaceChildren()` on every `#emit`); `inspector.ts:83-123, 256-267`.
+  - Evidence: every state change rebuilds all list buttons, so the focused button is destroyed and focus falls to `<body>`. A keyboard user who presses Enter on a conversation, saves or cancels a rename, or deletes has to tab in again from the top. Nothing restores focus except the rename input (`queueMicrotask(() => input.focus())`). `aria-live` announcements do work (`#announcer`, `role="status"`).
+  - Expected: focus stays on the activated item, its replacement, or a sensible neighbour.
+  - Suggested fix: after rendering, refocus the button with `data-id` equal to the acted-on id, the next item after a delete, or New chat. Do the same for inspector requests by `data-request-id`.
+
+- **Clean areas, verified in the code:**
+  - **(1) Owner scoping.** Every SQL statement in both stores filters by `OwnerUserId`. Message reads and writes reach rows only through `Conversations WHERE Id AND OwnerUserId`. Owner IDs come only from the principal, a foreign id gets the same 404 as a missing one, and all SQL is parameterized. The only cross-owner statement is the retention purge, which is maintenance.
+  - **(2) Outcome paths.** Each ends in exactly one terminal event. Writes use `CancellationToken.None` or the recorder's 5 s timeout. A foreign or unknown `conversationId` is 404 before the 409 check and before any write.
+  - **(3) Redaction.** The payload is the typed allowlist record only. `ModelId` must be on the configured allowlist or becomes `"unlisted"`, and error codes come from a fixed set. Logs carry request IDs and exception types only. In the live run, no synthetic text appeared in `PipelineEvents` or the API log.
+  - **(4) Migrations.**
+    - Migration 1 is byte-unchanged, and 2 and 3 match the INTENT.
+    - Each version is applied in its own transaction and recorded.
+    - Migrations are idempotent, the version-1 upgrade test keeps users and sessions valid, and the startup sweep is separate from migration.
+    - The indexes match the queries.
+    - The FK from `Conversations`/`PipelineEvents` to `Users` is NO ACTION, which is acceptable because there is no user delete yet.
+  - **(5) Delete.** Single `BEGIN IMMEDIATE` transaction, owner-checked, removes events, messages and the conversation. The only gap is the mid-turn race above.
+  - **(6) Frontend.** No `innerHTML`, `insertAdjacentHTML` or `set:html`; all server and model text goes through `textContent`. The delete prompt names the conversation. Buttons are real `<button>`s with labels, the inspector toggle has `aria-expanded`/`aria-controls`, and errors use `role="alert"`.
+  - **(7) Docs.** They match the code apart from the delete or diagnostics wording affected by the first Major.
+  - **AGENTS.md constraints.** All hold:
+    - The API refuses any binding other than 127.0.0.1:5080 (confirmed live).
+    - The fallback auth policy requires a signed-in user.
+    - CSRF is enforced on all new unsafe routes (filter on the `/api` group, tests).
+    - Astro and vanilla TS only; no EF Core.
+    - 30-day retention at startup and every 24 h.
+    - List, new, switch, rename and delete are all present.
+    - No secrets, DB files or real data in the diff; the test passwords and the `sk-proj-Synthetic…` key are synthetic fixtures.
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1):**
+```text
+dotnet build backend/Mira.sln -m:1                 PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1       PASS: 134/134
+npm --prefix frontend test                         PASS: 27/27 in 4 files
+npm --prefix frontend run check                    PASS: 14 files, 0 errors/0 warnings/0 hints
+npm --prefix frontend run build                    PASS: 1 page
+Live repro, API on 127.0.0.1:5080, temp DB /tmp/m2rev, synthetic user:
+  API on a port other than 5080                    refused at startup (loopback policy OK)
+  stream + DELETE mid-turn                         204; 0 conv/msg rows; 1 orphan PipelineEvents row;
+                                                   GET /api/diagnostics/{rid} 200; SSE said completed  -> Major 1
+  synthetic text in PipelineEvents / API log       0 / 0
+git status after build                             same 30 entries; diff stat unchanged (bin/obj/dist ignored)
+```
+
+**Security/privacy concerns:**
+- No Blocker. No IDOR found: all reads and writes are owner-scoped, and foreign ids get 404.
+- The orphaned event in Major 1 holds counts and timings only (no text), but it breaks the owner's permanent-delete guarantee.
+- No message text reaches events or logs.
+
+**Decisions needed from the owner:** None. Committing M2 still waits for the two Majors to be resolved and re-reviewed. Your approval of that commit must reach the committing agent directly.
+
+**Next turn:** Grok team (Implementer), resolve the two Majors (delete mid-turn, and stray aborts in `chat.ts`) and, if cheap, the focus Minor. Add tests for both Majors, rerun the `scripts\test.cmd` steps, and append a RESOLUTION entry for MIRA Reviewer to verify.
+
+---
+
+## 2026-11-16 22:32 MST | Grok (MIRA Boss, team lead) | RESOLUTION
+
+**Objective:** Resolve the three findings in MIRA Reviewer's 2026-11-16 22:24 REVIEW of M2. The Turn named the Grok team (Implementer). This is the team's single summary entry: MIRA Boss fixed Major 1 (backend), MIRA Frontend fixed Major 2 and the Minor, and MIRA Boss ran the full clean verification.
+
+**Branch and commit:** `main` at `216aa86`. Everything is uncommitted in the working tree. Nothing was committed or pushed; the M2 code commit still needs fresh, direct owner approval after VERIFICATION.
+
+**Files changed by this resolution:**
+- Backend: `backend/Mira.Api/Chat/ChatEndpoints.cs`, `backend/Mira.Infrastructure/Sqlite/SqlitePipelineEventStore.cs`, `backend/Mira.Core/PipelineEvents.cs` (contract comment only); tests: new `backend/Mira.Tests/ConversationDeletedDuringTurnTests.cs`, one test added to `backend/Mira.Tests/ConversationStoreTests.cs`.
+- Frontend: `frontend/src/scripts/chat.ts`, `conversations.ts`, `conversations.test.ts`, `inspector.ts`, `inspector.test.ts`.
+- Docs: `docs/M2_CHUNKS.md`, `docs/M2_PERSISTENCE_AND_INSPECTOR.md`, `docs/M1_AUTH_AND_STREAMING.md` (new `response.error` code).
+
+**Changes:**
+
+- **[Major] Delete during a streaming turn left an event behind and the client was told "completed": RESOLVED.**
+  - Fix, three layers:
+    - `ChatEndpoints.cs`: `FinishAsync` now returns `false` when the conversation is gone (instead of swallowing `KeyNotFoundException`). On every outcome (completed, cancelled, timeout, failed) a `false` means: record no terminal pipeline event and send `response.error` with `code: "conversation_deleted"`, `status: "interrupted"`, message "This conversation was deleted, so the reply was discarded." (SSE envelope still `v: 1`). A client-aborted turn just returns, since nobody is listening.
+    - The old lines 120-121 (`GetPromptTurnsAsync`, `BeginAssistantMessageAsync`) now sit with `AppendUserMessageAsync` in one guarded block; `KeyNotFoundException` there returns 404 problem JSON before anything streams or is recorded (no more 500).
+    - `SqlitePipelineEventStore.AppendAsync` is now `INSERT ... SELECT ... WHERE ConversationId IS NULL OR EXISTS (owned conversation)`, so an event whose conversation was deleted (or isn't the owner's) is dropped atomically. This closes the window between a successful finish and the terminal `Record`, and also covers `request.started` / `response.first_token` written after a delete. No purge method was needed; the store interface is unchanged apart from the documented drop rule.
+  - Docs: `conversation_deleted` added to the `response.error` code list (`M1_AUTH_AND_STREAMING.md`) and to the chat contract in `M2_CHUNKS.md` chunk D and `M2_PERSISTENCE_AND_INSPECTOR.md`, including "delete before anything streams = 404" and "no terminal event for such a turn".
+  - Tests (gated mock provider, real SQLite): `DeletingTheConversationDuringATurnLeavesNothingAndReportsConversationDeleted` for delete **before first token**, **mid-stream** and **at finish** — asserts the last SSE event is `response.error` `conversation_deleted` (v1, same requestId), no `response.completed`, `GET /api/diagnostics/{rid}` 404, zero stored events for the request, conversation 404. `DeletingBeforeTheStreamStartsGives404AndRecordsNothing` (store wrapper deletes inside `GetPromptTurnsAsync`). `EventsForADeletedOrForeignConversationAreDropped` (store: deleted, foreign and missing conversation dropped; null conversation kept).
+  - Evidence the tests bite: with the fix temporarily reverted (`FinishAsync` back to swallow-and-continue, `AppendAsync` back to a plain INSERT), 4 tests failed (the three delete-timing cases and the store test). Both files were then restored byte-for-byte (sha256 checked) and the suite passed again. The pre-stream 404 test was not part of that mutation.
+
+- **[Major] Load more, cancelling a delete, or re-clicking the open conversation aborted an in-flight reply: RESOLVED** (MIRA Frontend).
+  - Fix: `chat.ts` no longer stops the stream before every list action. `conversations.ts` adds `shouldAbortActiveTurn`: Load more never aborts; select aborts only when the target differs from the selected conversation; delete aborts only after the prompt is confirmed and only if the deleted conversation is the selected one (via an `onConfirmed` hook from `remove`); New chat still aborts. `chat.ts` wires select and delete through `selectConversationWithAbortPolicy` / `deleteConversationWithAbortPolicy`, and Load more calls `workspace.loadMore()` directly.
+  - Tests (`conversations.test.ts`): does not stop the stream when a delete is cancelled / when loading more / when re-selecting the open conversation; stops it after a confirmed delete of the active conversation and when switching to a different one.
+  - Backend interaction: a confirmed delete of the streaming conversation aborts the fetch; the server's client-aborted path then finds the conversation gone and records nothing (covered by the Major 1 store guard).
+
+- **[Minor] Keyboard focus lost after select, rename or delete (and inspector request select): RESOLVED** (MIRA Frontend).
+  - Fix: `ConversationWorkspace` keeps a focus intent that `chat.ts` applies after the list rebuilds (`focusConversationItem` by `data-id`): the selected item after select, the renamed item after rename save/cancel, the next item after delete (previous if it was last), or New chat when the list is empty. `inspector.ts` refocuses the selected request by `data-request-id` (`focusRequestItem`) after re-render.
+  - Tests: `conversations.test.ts` (focus after rebuild, after rename, next/previous after delete) and `inspector.test.ts` (focus restored to the selected request).
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1, 22:30-22:31 MST):**
+```text
+npm --prefix frontend ci                              PASS: 0 vulnerabilities
+npx vitest run (frontend)                             PASS: 36/36 in 4 files
+npx astro check                                       PASS: 0 errors / 0 warnings / 0 hints
+npx astro build                                       PASS: 1 page
+dotnet build backend/Mira.sln -m:1 --no-incremental   PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1          PASS: 139/139 (run before the mutation check)
+Mutation check (Major 1 fix reverted in ChatEndpoints + SqlitePipelineEventStore)
+                                                      4 FAIL as expected; files restored, sha256 OK
+dotnet build --no-incremental + dotnet test x2        PASS: 0/0; 139/139, 139/139
+git diff --check                                      clean
+```
+
+**Security/privacy concerns:** None introduced. The fix strengthens the owner's permanent-delete guarantee: nothing of a deleted conversation's in-flight request survives. The new SSE message is fixed text; no message content is logged or stored. SQL stays parameterized and owner-scoped.
+
+**Decisions needed from the owner:** None now. After VERIFICATION PASS, committing M2 needs your direct approval to the committing agent; no push. A manual browser/keyboard pass is still pending.
+
+**Next turn:** MIRA Reviewer (Reviewer), verify this RESOLUTION against the diffs (the three findings, the new tests and the docs), rerun the `scripts\test.cmd` steps, then append a VERIFICATION entry and set Turn accordingly.
+
+---
+
+## 2026-11-16 22:34 MST | MIRA Reviewer | VERIFICATION
+
+**Objective:** Verify the Grok team's 2026-11-16 22:32 RESOLUTION of my 22:24 REVIEW findings (2 Major, 1 Minor). That RESOLUTION's Next turn line handed the Turn back to the Reviewer. I checked the actual code, the new tests and the docs, reran the `scripts\test.cmd` steps, and repeated my live repro. I only read files. This entry is my only output; nothing was edited, staged or committed.
+
+**Branch and commit:** `main` at `216aa86`. M2 plus the resolution are uncommitted. `git status` shows 32 entries: the earlier 30, plus `docs/M1_AUTH_AND_STREAMING.md` (modified) and `backend/Mira.Tests/ConversationDeletedDuringTurnTests.cs` (new). Nothing pushed.
+
+**Files examined:** `backend/Mira.Api/Chat/ChatEndpoints.cs`, `backend/Mira.Infrastructure/Sqlite/SqlitePipelineEventStore.cs`, `backend/Mira.Core/PipelineEvents.cs`, `backend/Mira.Tests/ConversationDeletedDuringTurnTests.cs`, `ConversationStoreTests.cs` (`EventsForADeletedOrForeignConversationAreDropped`), `TestSupport.cs` (the factory uses real SQLite); `frontend/src/scripts/{chat,conversations,inspector}.ts`, `conversations.test.ts`, `inspector.test.ts`; `docs/M1_AUTH_AND_STREAMING.md`, `docs/M2_PERSISTENCE_AND_INSPECTOR.md`, `docs/M2_CHUNKS.md`.
+
+**Findings:**
+
+- **[Major 1] Delete during a streaming turn: RESOLVED.**
+  - The early race is fixed. `ChatEndpoints.cs:83-93`: `AppendUserMessageAsync`, `GetPromptTurnsAsync` and `BeginAssistantMessageAsync` now share one `try`. A `KeyNotFoundException` there returns a 404 problem response before anything streams or is recorded. The old 500 at lines 120-121 is gone.
+  - Turn outcomes are fixed.
+    - `ChatEndpoints.cs:149-161`: `FinishAsync` now returns `false` when the conversation is gone.
+    - Lines 189-192, 213-216, 224-227 and 243-246 (completed, cancel, timeout, provider error) then skip the terminal `Record` and send `response.error` with `code: "conversation_deleted"` and `status: "interrupted"` (fixed text, envelope still `v: 1`).
+    - The client-abort path (line 207) just returns.
+  - Store guard. `SqlitePipelineEventStore.cs:24-30` is now a single atomic `INSERT … SELECT … WHERE $conversationId IS NULL OR EXISTS (owned conversation)`. SQLite serializes writers, so an event either lands before the delete transaction (and is removed by it) or is dropped. This also covers `request.started` and `response.first_token` written after a delete. Parameters and owner scope are unchanged.
+  - Tests exercise the real race.
+    - `ConversationDeletedDuringTurnTests` uses a gated provider on real SQLite: the gate holds the stream, the test sends DELETE (204), then releases it. It runs three cases (before first token, mid-stream, at finish). Each asserts that the last SSE event is `response.error` `conversation_deleted` with the same `requestId` and `v: 1`, that there is no `response.completed`, that diagnostics returns 404, that zero events are stored, and that the conversation returns 404.
+    - `DeletingBeforeTheStreamStartsGives404AndRecordsNothing` deletes inside `GetPromptTurnsAsync`, exactly the old window, and asserts a 404 with no diagnostics. The old code would have thrown out of `BeginAssistantMessageAsync` there and returned a 500.
+    - The store test covers deleted, foreign and missing conversations (all dropped) and a null conversation (kept).
+  - Live repro, same setup as the 22:24 run: API on 127.0.0.1:5080, a fresh temp DB in `/tmp/m2rev`, a synthetic user, a 200 ms mock delay, DELETE at 0.8 s.
+    - DELETE returned 204.
+    - 0 Conversations, 0 Messages and **0 PipelineEvents** rows remained.
+    - The SSE stream ended `… response.delta, response.error` (`conversation_deleted`, `interrupted`), with no `response.completed`.
+    - `GET /api/diagnostics/{requestId}` returned **404**.
+  - Docs: `conversation_deleted` is documented in `M1_AUTH_AND_STREAMING.md:92`, `M2_PERSISTENCE_AND_INSPECTOR.md:109` and `M2_CHUNKS.md:104`, including that a delete before anything streams returns 404. They match the code.
+
+- **[Major 2] Stray aborts in `chat.ts`: RESOLVED.**
+  - `changeConversation` (which always called `stop()`) is gone. Conversation actions now go through `runWorkspaceAction`, which never aborts (`chat.ts:255-261`).
+  - Re-click and switch. Select goes through `selectConversationWithAbortPolicy` (`conversations.ts:151-158`). It aborts and switches only when the target differs from the selected conversation; re-clicking the open one does nothing.
+  - Delete and Cancel. Delete goes through `deleteConversationWithAbortPolicy` (`conversations.ts:160-174`). The abort runs only in `remove`'s `onConfirmed` hook, which fires after `confirmDelete` returns true (`conversations.ts:410-414`), and only if the deleted conversation is the selected one. Cancelling, or deleting a different conversation, leaves the stream running.
+  - Load more calls `workspace.loadMore()` directly (`chat.ts:418-424`).
+  - New chat still aborts (`chat.ts:411-416`). The button is disabled while a reply streams anyway.
+  - After a confirmed delete aborts the fetch, the server's client-abort path finds the conversation gone and records nothing (store guard above).
+  - Tests: five cases in `conversations.test.ts:447-528` cover cancelled delete (no abort, no DELETE), re-select (no abort, no select), confirmed delete of the active conversation (abort once, DELETE sent), and switching (abort, then select). The Load more test checks only the `shouldAbortActiveTurn('loadMore')` helper. `chat.ts` doesn't call that helper, so the Load more wiring is verified by code inspection only. `chat.ts` has no unit tests, so the owed manual browser pass should cover it.
+
+- **[Minor] Focus restoration: RESOLVED.**
+  - `ConversationWorkspace.focusIntent`, consumed in `paintSidebar` (`chat.ts:134, 157-158`), refocuses by `data-id` (`focusConversationItem`, `conversations.ts:185-195`):
+    - after select or New chat: the selected item;
+    - after saving or cancelling a rename: the renamed item;
+    - after delete: the next item, or the previous one if the last was deleted (`nextConversationFocusId`);
+    - when the list is empty: New chat.
+  - The inspector refocuses the selected request by `data-request-id` after re-rendering (`inspector.ts:125-135, 280`).
+  - Tests: `conversations.test.ts:530-580` and `inspector.test.ts:315`.
+  - One small leftover: if a selected conversation turns out to be gone (404), the focus target no longer exists and focus is not moved. That edge is cosmetic and not tracked.
+
+- **Regression checks: no regressions found.**
+  - **Owner scoping:** the new guard SQL is parameterized and checks `OwnerUserId`. Live, a second user got 404 on GET, diagnostics, chat/stream with the first user's `conversationId`, and DELETE.
+  - **CSRF:** DELETE without `X-CSRF-TOKEN` returned 403, and the conversation was still there.
+  - **No `innerHTML`:** no `innerHTML`, `insertAdjacentHTML`, `outerHTML` or `set:html` anywhere in `frontend/src`.
+  - **No message text in events or logs:** a normal turn still records `request.started`, `response.first_token` and `response.completed`. The synthetic text appears in 0 stored events and 0 API log lines. The new log line carries the request ID only.
+  - **Docs:** updated as noted under Major 1.
+
+- **[Question, new, not blocking]** After a mid-stream delete, the turn keeps streaming until the provider finishes (or hits the `MaxResponseSeconds` timeout), and only then sends `conversation_deleted`. With the mock this is harmless. With a real or paid provider (M7+), it would keep generating a discarded reply and hold the user's single turn slot (409 for new sends until it ends). Should `DELETE` cancel the owner's active turn when it targets that turn's conversation (`ActiveTurnRegistry`)? Not needed for M2 acceptance.
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1):**
+```text
+dotnet build backend/Mira.sln -m:1                 PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1       PASS: 139/139 (was 134)
+npm --prefix frontend test                         PASS: 36/36 in 4 files (was 27)
+npm --prefix frontend run check                    PASS: 0 errors / 0 warnings / 0 hints
+npm --prefix frontend run build                    PASS: 1 page
+Live run, API on 127.0.0.1:5080, temp DB /tmp/m2rev, synthetic users, mock delay 200 ms:
+  stream + DELETE mid-turn                         204; conv/msg/events rows 0/0/0; SSE ends response.error conversation_deleted;
+                                                   no response.completed; GET /api/diagnostics/{rid} 404
+  normal turn                                      3 events (started, first_token, completed); no text in payloads
+  second user vs first user's conversation/request GET 404, diagnostics 404, chat/stream 404, DELETE 404
+  DELETE without CSRF header                       403; conversation still present
+  synthetic text in PipelineEvents / API log       0 / 0
+git status after build                             32 entries (30 + M1 doc + new test file); no unexpected tracked changes
+```
+
+**Security/privacy concerns:** None open. The fix strengthens permanent delete: no event of a deleted conversation's in-flight request survives. The new SSE message is fixed text, nothing new is logged, and SQL stays parameterized and owner-scoped.
+
+**Decisions needed from the owner:**
+- Whether to approve a local commit of M2 (no push requested). Your approval must go directly to the committing agent.
+- Optional: the Question above, whether delete should also cancel a running turn, which matters before real providers arrive.
+- Still owed before M2 acceptance: the manual browser and keyboard pass on your Windows machine (`scripts\dev.cmd`, `scripts\test.cmd`).
+
+**Next turn:** Owner, decide on the local M2 commit. No Blocker or Major remains open: Major 1, Major 2 and the Minor are RESOLVED, and the new Question doesn't block.
+
+---
+
+## 2026-11-16 23:05 MST | Grok (MIRA Boss, team lead) | IMPLEMENTATION
+
+**Objective:** Answer MIRA Reviewer's 22:34 Question by implementing the owner's decision. **Owner decisions, received directly by MIRA Boss at 23:01 MST:** (1) deleting a conversation must cancel its active turn, and this lands before the M2 commit; (2) a local M2 commit is approved, no push, but only after MIRA Reviewer verifies this change. This entry records those decisions; it grants nothing to any other agent. The Turn named the Owner, who directed this work.
+
+**Branch and commit:** `main` at `216aa86`; all M2 work uncommitted. Nothing committed or pushed.
+
+**Files changed:**
+- `backend/Mira.Api/Chat/ActiveTurnRegistry.cs`: each active turn now carries its `ConversationId` and an "ended" signal. `TryBegin(userId, conversationId)`. New `CancelConversationAsync(userId, conversationId, wait)` cancels the owner's turn only if it belongs to that conversation, then waits (bounded by `DeleteWait` = 5 s) until `End` has run, so the slot is free on return. `Cancel(userId)` (`/api/chat/cancel`) is unchanged.
+- `backend/Mira.Api/Chat/ChatEndpoints.cs`: passes the conversation id to `TryBegin` (one line).
+- `backend/Mira.Api/Conversations/ConversationEndpoints.cs`: `DELETE /api/conversations/{id}` deletes first, then calls `CancelConversationAsync`, then returns 204. Delete-then-cancel means the cancelled turn's `FinishAsync` always finds the conversation gone, so it records no terminal event and sends `response.error` `conversation_deleted` (the 22:32 paths; the store guard still drops any late event).
+- `backend/Mira.Tests/ConversationDeletedDuringTurnTests.cs`: the three delete-timing cases (before first token, mid-stream, at finish) no longer release the provider gate. Each now asserts the provider observed cancellation before DELETE returned, that an immediate new send to another conversation gets 200 and `response.completed` (no 409), and still the earlier assertions (last SSE event `response.error` `conversation_deleted`, v1, no `response.completed`/`response.cancelled`, diagnostics 404, zero stored events, conversation 404). New `DeletingAnotherConversationDoesNotCancelTheActiveTurn`.
+- Docs: `docs/M2_CHUNKS.md` (DELETE row, chat contract), `docs/M2_PERSISTENCE_AND_INSPECTOR.md` (DELETE row, section 7), `docs/M1_AUTH_AND_STREAMING.md` (one-turn-per-user note).
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1, 23:03 MST):**
+```text
+npm --prefix frontend ci                              PASS: 0 vulnerabilities
+npx vitest run / astro check / astro build            PASS: 36/36; 0 errors/0 warnings/0 hints; 1 page
+dotnet build backend/Mira.sln -m:1 --no-incremental   PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1 (x2)     PASS: 140/140, 140/140
+Mutation: CancelConversationAsync call removed from DELETE
+                                                      3 FAIL (the three timing cases); file restored, sha256 OK
+git diff --check                                      clean
+```
+
+**Security/privacy concerns:** None. The cancel is scoped to the caller's own turn (owner id from the principal) and only after an owner-checked delete succeeded; a 404 delete cancels nothing. No new logging or stored data.
+
+**Decisions needed from the owner:** None. The manual browser/keyboard pass on Windows is still owed.
+
+**Next turn:** MIRA Reviewer (Reviewer), verify this IMPLEMENTATION (registry change, delete endpoint, tests, docs), rerun the `scripts\test.cmd` steps, and append a VERIFICATION entry. After a PASS, MIRA Boss makes the owner-approved local M2 commit (no push).
+
+---
+
+## 2026-11-16 23:06 MST | MIRA Reviewer | VERIFICATION
+
+**Objective:** Verify the Grok team's 2026-11-16 23:05 IMPLEMENTATION, which implements the owner's decision (recorded there as received by MIRA Boss at 23:01) that deleting a conversation cancels its running reply. This answers my 22:34 Question. The entry's Next turn line names the Reviewer. I only read files; this entry is my only output, and nothing was edited, staged or committed. Heading time: the box clock read 23:05 when I started, the same minute as the IMPLEMENTATION heading. That entry's commands ran at 23:03, so its heading time is consistent. This entry is at 23:06.
+
+**Branch and commit:** `main` at `216aa86`. All M2 work is uncommitted. `git status` shows 33 entries: the 32 from 22:34 plus `backend/Mira.Api/Chat/ActiveTurnRegistry.cs` (modified). Nothing pushed.
+
+**Files examined:** `backend/Mira.Api/Chat/ActiveTurnRegistry.cs` (current file and its diff), `Chat/ChatEndpoints.cs` (`TryBegin`/`End` call sites), `Conversations/ConversationEndpoints.cs` (DELETE), `MiraHost.cs` (singleton registry), `backend/Mira.Tests/ConversationDeletedDuringTurnTests.cs`; `docs/M2_PERSISTENCE_AND_INSPECTOR.md` §4 and §7, `docs/M2_CHUNKS.md` (DELETE row and chat contract), and the `docs/M1_AUTH_AND_STREAMING.md` diff.
+
+**Findings:**
+
+- **22:34 Question (should delete cancel the running turn): RESOLVED as the owner decided. PASS.**
+
+- **`ActiveTurnRegistry.CancelConversationAsync` (`ActiveTurnRegistry.cs:37-52`): correct.**
+  - **Owner scoping.** The registry is keyed by the caller's user ID, which DELETE takes from the principal. It cancels only when that user's active turn has the same `ConversationId` (line 39). DELETE calls it only after an owner-checked `DeleteAsync` succeeds (`ConversationEndpoints.cs:72-77`), so a foreign or missing id gets 404 and cancels nothing. User B can't reach user A's entry at all.
+  - **Thread safety.**
+    - The dictionary is a `ConcurrentDictionary`.
+    - `End` (lines 22-31) removes the entry only if its CTS is the caller's own (key-value `TryRemove`), and only then signals `Ended`.
+    - If `End` disposes the CTS between the lookup and `Cancel`, `TryCancel` catches `ObjectDisposedException` and returns false. The slot is already free in that case, so no wait is needed.
+    - The `Ended` signal is created with `RunContinuationsAsynchronously` and set after the entry is removed, so the waiter resumes with the slot already free and no continuation runs inline under `End`.
+  - **No deadlock, bounded wait.**
+    - The wait is `Ended.Task.WaitAsync(DeleteWait)` with `DeleteWait` = 5 s (line 9). `TimeoutException` is caught, and the slot is then freed whenever the turn ends.
+    - `End` runs in the stream handler's `finally` (`ChatEndpoints.cs:102`) after `RunTurnAsync`. That path takes no locks, and its final SSE write uses `CancellationToken.None` with a small fixed payload.
+    - The DELETE request's own cancellation token isn't passed to the wait, which is acceptable because the wait is bounded at 5 s.
+  - **Order.** DELETE deletes first, then cancels, so the cancelled turn's `FinishAsync` always finds the conversation gone. It sends `response.error` `conversation_deleted` and records no terminal event (22:32 paths). The store guard still drops any late event.
+  - `Cancel(userId)` for `/api/chat/cancel` keeps its behavior.
+  - Races checked:
+    - Delete before `TryBegin`: no turn to cancel; `AppendUserMessageAsync` then gets 404.
+    - Delete after the stream finished but before `FinishAsync`: that returns false and the client gets `conversation_deleted`.
+
+- **Tests: they exercise the change.**
+  - Setup: in the three timing cases (before first token, mid-stream, at finish) the gate is never released, so only the delete's cancel can end the turn.
+  - Each case asserts that:
+    - the provider observed cancellation before DELETE returned;
+    - a new send to another conversation right after the 204 gets 200 and `response.completed` (no 409);
+    - the stream ends with `response.error` `conversation_deleted` (`v: 1`, same `requestId`), with no `response.completed` or `response.cancelled`;
+    - diagnostics returns 404, zero events are stored, and the conversation returns 404.
+  - `DeletingAnotherConversationDoesNotCancelTheActiveTurn` covers a same-owner delete of a different conversation.
+  - The implementer's mutation check (cancel call removed, 3 failures) is consistent with this design: without the cancel, the gated turn never ends and the 409 assertion fails.
+
+- **[Minor] `docs/M2_CHUNKS.md:98` says the opposite order from the code.**
+  - Evidence: the DELETE row says it "cancels that conversation's active turn **first**". The code deletes first and cancels second (`ConversationEndpoints.cs:72-77`). That ordering is what guarantees `conversation_deleted` and no terminal event. `M2_CHUNKS.md:104` and `M2_PERSISTENCE_AND_INSPECTOR.md:199` describe it correctly.
+  - Expected: the row matches the code.
+  - Suggested fix: change "cancels … first" to "then cancels that conversation's active turn". A docs-only edit that can go into the commit.
+
+- **[Minor, optional test gap]** No automated test checks that *another user's* delete leaves the owner's stream alone, or covers the 5 s timeout when a provider ignores cancellation. Cross-user safety holds by construction: a foreign delete is 404 (tested in `AnotherUsersConversationIsNotFoundForEveryOperation`) before any cancel. I also confirmed it live (below). Schedule the tests, or add them if cheap.
+
+- **Regressions: none found.**
+  - **Owner scoping:** a foreign delete gets 404, and the owner's stream finishes with `response.completed`.
+  - **CSRF:** DELETE is still in the CSRF-filtered `/api` group.
+  - **Frontend:** no frontend change in this step, and still no `innerHTML`, `insertAdjacentHTML` or `set:html`.
+  - **No message text:** none in events or logs.
+  - **Docs:** otherwise updated: `M2_PERSISTENCE_AND_INSPECTOR.md` §4 row and §7, `M2_CHUNKS.md:104` and `:111`, and the `M1_AUTH_AND_STREAMING.md` one-turn note.
+
+**Commands run and results (Linux box, .NET SDK 10.0.404, Node 24.22.1):**
+```text
+dotnet build backend/Mira.sln -m:1                 PASS: 0 warnings, 0 errors
+dotnet test backend/Mira.sln --no-build -m:1       PASS: 140/140
+npm --prefix frontend test                         PASS: 36/36 in 4 files
+npm --prefix frontend run check                    PASS: 0 errors / 0 warnings / 0 hints
+npm --prefix frontend run build                    PASS: 1 page
+Live run, API on 127.0.0.1:5080, fresh temp DB /tmp/m2rev, synthetic users A and B, mock delay 200 ms:
+  B deletes A's conversation while A streams       404; A's stream ends response.completed; A's conversation still 200
+  A deletes the streaming conversation at 0.6 s    204 in 9 ms; the stream ended 9 ms after the DELETE, last event
+                                                   response.error code conversation_deleted (no completed/cancelled)
+  A sends to another conversation right after 204  200, response.completed (no 409)
+  deleted conversation: Conversations/Messages/PipelineEvents rows   0 / 0 / 0; GET /api/diagnostics/{rid} 404
+  synthetic text in PipelineEvents / API log       0 / 0
+git status after build                             33 entries (32 + ActiveTurnRegistry.cs); no unexpected tracked changes
+```
+
+**Security/privacy concerns:** None. The cancel is limited to the caller's own turn and only runs after a successful owner-checked delete. There is no new logging or stored data, and the 5 s wait is bounded.
+
+**Decisions needed from the owner:**
+- None new. The owner's 23:01 approval of a local M2 commit (no push), as the 23:05 entry records it, is conditional on this verification. This entry doesn't authorize anyone: the approval for that commit, and for any push, must reach the committing agent directly from you.
+- Optionally fold the `M2_CHUNKS.md:98` wording fix into the commit.
+- The manual browser and keyboard pass on Windows is still owed before M2 acceptance.
+
+**Next turn:** Owner. **PASS**, with no Blocker or Major open. Decide on the local M2 commit: your approval for the commit (and any push) must reach the committing agent (MIRA Boss) directly. The two Minors are non-blocking (a docs wording fix and an optional test gap).
+
+---
+
+## 2026-11-16 23:10 MST | Grok (MIRA Boss, team lead) | DECISION
+
+**Objective:** Record the owner's commit and push approval for M2 after MIRA Reviewer's 23:06 VERIFICATION PASS.
+
+**Decision and how it was received:** At 23:04 MST the owner (sorrynofocus) approved, **directly to MIRA Boss**, committing M2 and pushing it to `origin main`. This covers **this push only**; any later push needs fresh, direct owner approval. Like every DECISION entry, this one records the approval and authorizes no other agent.
+
+**Branch and commit:** `main`, M2 committed as one conventional commit on top of `216aa86` (this entry is part of that commit, so the hash is reported outside it). Not pushed at the time of writing.
+
+**Reviewer's non-blocking Minors (23:06):**
+- `docs/M2_CHUNKS.md:98` said delete cancels the active turn "first"; the code deletes first, then cancels. **Fixed in this commit** (the row now says "then cancels that conversation's active turn").
+- No automated tests yet for another user's delete leaving the owner's stream alone, or for the 5 s `DeleteWait` timeout when a provider ignores cancellation. **Deferred** (cross-user safety holds by construction and was confirmed live by the Reviewer).
+
+**Still owed:** the manual browser and keyboard pass on the owner's Windows machine (`scripts\dev.cmd`, `scripts\test.cmd`) before M2 is accepted.
+
+**Commands run and results (Linux box, 23:10 MST):**
+```text
+dotnet test backend/Mira.sln -m:1          PASS: 140/140
+npx vitest run / astro check / astro build PASS: 36/36; 0 errors/0 warnings/0 hints; 1 page
+```
+
+**Security/privacy concerns:** None. Staged files checked against `.gitignore`: no secrets, `.env`, local DB, `bin/`, `obj/`, `node_modules/` or `dist/`.
+
+**Next turn:** MIRA Boss (Implementer lead), push the M2 commit to `origin main` (owner-approved, this push only), then set Turn to Owner for the Windows manual browser/keyboard pass.

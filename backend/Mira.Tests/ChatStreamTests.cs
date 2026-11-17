@@ -201,8 +201,8 @@ public sealed class ChatStreamTests
         };
         using (var response = await bob.SendAsync(request)) await Sse.ReadAllAsync(response);
 
-        var aliceTurns = await factory.Services.GetRequiredService<IConversationStore>().GetPromptTurnsAsync(alice.Id);
-        Assert.Empty(aliceTurns);
+        var store = factory.Services.GetRequiredService<IConversationStore>();
+        Assert.Empty(await store.ListAsync(alice.Id, 0, ConversationLimits.MaxPageSize));
     }
 
     [Fact]
@@ -218,6 +218,46 @@ public sealed class ChatStreamTests
         Assert.Equal(
             [new ChatTurn(ChatRole.User, "one"), new ChatTurn(ChatRole.Assistant, "ok"), new ChatTurn(ChatRole.User, "two")],
             provider.LastRequest!.Messages);
+    }
+
+    [Fact]
+    public async Task ConversationIdChoosesTheConversationAndOnlyItsHistoryIsSent()
+    {
+        var provider = new RecordingChatProvider();
+        using var factory = new MiraApiFactory(services: s => s.AddSingleton<IChatProvider>(provider));
+        using var client = await LoggedInClientAsync(factory, "owner");
+        var first = await client.CreateConversationAsync("first");
+        var second = await client.CreateConversationAsync("second");
+
+        using (var r = await client.SendAsync(ClientExtensions.StreamRequest("in first", first))) await Sse.ReadAllAsync(r);
+        using (var r = await client.SendAsync(ClientExtensions.StreamRequest("in second", second)))
+        {
+            var events = await Sse.ReadAllAsync(r);
+            Assert.All(events, e => Assert.Equal(second.ToString(), e.Data.GetProperty("conversationId").GetString()));
+        }
+
+        Assert.Equal([new ChatTurn(ChatRole.User, "in second")], provider.LastRequest!.Messages);
+        var firstMessages = (await client.GetFromJsonAsync<JsonElement>($"/api/conversations/{first}")).GetProperty("messages");
+        Assert.Equal(2, firstMessages.GetArrayLength());
+        Assert.Equal("in first", firstMessages[0].GetProperty("content").GetString());
+
+        // Without a conversationId, M1 behavior: the most recently updated conversation.
+        using (var r = await client.SendAsync(ClientExtensions.StreamRequest("no id")))
+        {
+            Assert.Equal(second.ToString(), (await Sse.ReadAllAsync(r))[0].Data.GetProperty("conversationId").GetString());
+        }
+    }
+
+    [Fact]
+    public async Task UnknownConversationIdIsNotFoundAndNothingIsSaved()
+    {
+        using var factory = new MiraApiFactory();
+        using var client = await LoggedInClientAsync(factory, "owner");
+
+        using var response = await client.SendAsync(ClientExtensions.StreamRequest("hello", Guid.NewGuid()));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Empty((await client.GetFromJsonAsync<JsonElement>("/api/conversations")).GetProperty("items").EnumerateArray());
     }
 
     private static async Task<HttpClient> LoggedInClientAsync(MiraApiFactory factory, string username)
