@@ -44,11 +44,16 @@ export interface ConversationMessage {
   requestId: string | null;
 }
 
+export type PersonaStatus = 'active' | 'deleted';
+
 export interface ConversationSummary {
   id: string;
   title: string | null;
   createdAt: string;
   updatedAt: string;
+  // Present on M4 API responses; optional so older fixtures still typecheck.
+  personaId?: string;
+  personaStatus?: PersonaStatus;
 }
 
 // GET /api/conversations/{id} and GET /api/conversations/current return this Conversation shape (no ownerUserId).
@@ -60,6 +65,8 @@ export interface ConversationSnapshot {
   createdAt: string;
   updatedAt: string;
   messages: ConversationMessage[];
+  personaId?: string;
+  personaStatus?: PersonaStatus;
 }
 
 export interface PipelineEventData {
@@ -72,6 +79,8 @@ export interface PipelineEventData {
   firstTokenMs?: number | null;
   totalMs?: number | null;
   errorCode?: string | null;
+  personaId?: string | null;
+  personaVersion?: number | null;
 }
 
 // GET /api/diagnostics/{requestId} returns { requestId, conversationId, events }.
@@ -152,6 +161,8 @@ export function asConversationSnapshot(body: unknown): ConversationSnapshot {
     createdAt: record.createdAt ?? '',
     updatedAt: record.updatedAt ?? '',
     messages: Array.isArray(record.messages) ? record.messages : [],
+    personaId: asOptionalString(record.personaId),
+    personaStatus: asPersonaStatus(record.personaStatus),
   };
 }
 
@@ -165,6 +176,8 @@ export function asConversationSummary(body: unknown): ConversationSummary {
     title: record.title ?? null,
     createdAt: record.createdAt ?? '',
     updatedAt: record.updatedAt ?? '',
+    personaId: asOptionalString(record.personaId),
+    personaStatus: asPersonaStatus(record.personaStatus),
   };
 }
 
@@ -209,6 +222,131 @@ export async function getPreferences(): Promise<UserPreferences> {
 
 export async function updatePreferences(update: Partial<UserPreferences>): Promise<UserPreferences> {
   return putJson<UserPreferences>('/api/me/preferences', update);
+}
+
+// M4 personas. Built-in id and limits match backend/Mira.Core/Personas.cs (chunk 0, 3558e9c).
+export const BUILTIN_MIRA_PERSONA_ID = '00000000-0000-0000-0000-000000000001';
+
+export const PERSONA_LIMITS = {
+  maxUserPersonas: 20,
+  maxNameLength: 80,
+  maxDescriptionLength: 200,
+  maxBodyLength: 8000,
+  maxVersionsPerPersona: 5,
+} as const;
+
+export interface Persona {
+  id: string;
+  ownerUserId?: string | null;
+  activeVersion: number;
+  isBuiltIn: boolean;
+  createdAt: string;
+  updatedAt: string;
+  name: string;
+  description: string | null;
+}
+
+export interface PersonaDetail extends Persona {
+  markdown: string;
+}
+
+export interface PersonaVersionInfo {
+  personaId: string;
+  version: number;
+  name: string;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface PersonaVersion extends PersonaVersionInfo {
+  markdown: string;
+}
+
+export interface PersonaDraft {
+  name: string;
+  description: string | null;
+  markdown: string;
+}
+
+export interface PersonaWrite {
+  name: string;
+  description: string | null;
+  markdown: string;
+}
+
+export async function listPersonas(): Promise<Persona[]> {
+  return asPersonaList(await getJson<unknown>('/api/personas'));
+}
+
+export async function getPersona(id: string): Promise<PersonaDetail> {
+  return getJson<PersonaDetail>(`/api/personas/${id}`);
+}
+
+export async function listPersonaVersions(id: string): Promise<PersonaVersionInfo[]> {
+  return asPersonaVersionList(await getJson<unknown>(`/api/personas/${id}/versions`));
+}
+
+export async function getPersonaVersion(id: string, version: number): Promise<PersonaVersion> {
+  return getJson<PersonaVersion>(`/api/personas/${id}/versions/${version}`);
+}
+
+export async function createPersona(write: PersonaWrite): Promise<PersonaDetail> {
+  return postJson<PersonaDetail>('/api/personas', write);
+}
+
+export async function updatePersona(id: string, write: PersonaWrite): Promise<PersonaDetail> {
+  return putJson<PersonaDetail>(`/api/personas/${id}`, write);
+}
+
+export async function revertPersona(id: string, version: number): Promise<PersonaDetail> {
+  return postJson<PersonaDetail>(`/api/personas/${id}/revert`, { version });
+}
+
+export async function deletePersona(id: string): Promise<void> {
+  return deleteRequest(`/api/personas/${id}`);
+}
+
+export async function draftPersona(write?: Partial<PersonaWrite>): Promise<PersonaDraft> {
+  return postJson<PersonaDraft>('/api/personas/draft', write ?? {});
+}
+
+export async function getDefaultPersonaId(): Promise<string> {
+  return asDefaultPersonaId(await getJson<unknown>('/api/personas/default'));
+}
+
+export async function setDefaultPersona(personaId: string): Promise<string> {
+  const body = await putJson<unknown>('/api/personas/default', { personaId });
+  return body === undefined ? personaId : asDefaultPersonaId(body);
+}
+
+export async function setConversationPersona(conversationId: string, personaId: string): Promise<ConversationSnapshot | undefined> {
+  return putJson<ConversationSnapshot | undefined>(`/api/conversations/${conversationId}/persona`, { personaId });
+}
+
+export function asPersonaList(body: unknown): Persona[] {
+  return unwrapList<Persona>(body, ['items', 'personas']);
+}
+
+export function asPersonaVersionList(body: unknown): PersonaVersionInfo[] {
+  return unwrapList<PersonaVersionInfo>(body, ['items', 'versions']);
+}
+
+export function asDefaultPersonaId(body: unknown): string {
+  if (typeof body === 'string' && body) return body;
+  if (typeof body === 'object' && body !== null) {
+    const record = body as { personaId?: unknown; id?: unknown };
+    if (typeof record.personaId === 'string' && record.personaId) return record.personaId;
+    if (typeof record.id === 'string' && record.id) return record.id;
+  }
+  return BUILTIN_MIRA_PERSONA_ID;
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function asPersonaStatus(value: unknown): PersonaStatus | undefined {
+  return value === 'active' || value === 'deleted' ? value : undefined;
 }
 
 export async function deleteRequest(path: string): Promise<void> {

@@ -10,6 +10,7 @@ import {
   type MessageStatus,
   type ChatRole,
   type UserPreferences,
+  type PipelineEvent,
 } from './api';
 import {
   ConversationWorkspace,
@@ -21,7 +22,27 @@ import {
   shouldAbortActiveTurn,
   syncLoadMoreButton,
 } from './conversations';
-import { InspectorController, liveInspectorClient, renderRequestLink } from './inspector';
+import { InspectorController, liveInspectorClient, renderRequestLink, type InspectorClient } from './inspector';
+import {
+  DELETED_PERSONA_NAME,
+  DELETED_PIN_NEW_TURNS,
+  DELETED_PIN_STATUS,
+  PersonaCatalog,
+  PersonaEditorSession,
+  conversationPinStatus,
+  fillPersonaSelect,
+  findPersona,
+  personaFieldsFromEvents,
+  readEditorWrite,
+  renderConversationPersonaStatus,
+  renderInspectorPersona,
+  renderPersonaList,
+  renderVersionDiff,
+  renderVersionList,
+  resolvePersonaName,
+  showPersonaAlert,
+  syncEditorControls,
+} from './personas';
 import {
   SettingsController,
   clearAccountArea,
@@ -73,6 +94,27 @@ const workspaceBody = byId<HTMLElement>('workspace-body');
 const conversationList = byId<HTMLUListElement>('conversation-list');
 const conversationEmpty = byId<HTMLElement>('conversation-empty');
 const newChatButton = byId<HTMLButtonElement>('new-chat-button');
+const newPersonaButton = byId<HTMLButtonElement>('new-persona-button');
+const personaList = byId<HTMLUListElement>('persona-list');
+const conversationPersonaStatus = byId<HTMLElement>('conversation-persona-status');
+const conversationPersonaPicker = byId<HTMLSelectElement>('conversation-persona-picker');
+const conversationPersonaNote = byId<HTMLElement>('conversation-persona-note');
+const settingsDefaultPersona = byId<HTMLSelectElement>('settings-default-persona');
+const personaEditorDialog = byId<HTMLDialogElement>('persona-editor');
+const personaEditorError = byId<HTMLElement>('persona-editor-error');
+const personaVersionList = byId<HTMLUListElement>('persona-version-list');
+const personaDiff = byId<HTMLElement>('persona-diff');
+const personaBody = byId<HTMLTextAreaElement>('persona-body');
+const personaPreview = byId<HTMLElement>('persona-preview');
+const personaSuggest = byId<HTMLButtonElement>('persona-suggest');
+const personaCopy = byId<HTMLButtonElement>('persona-copy');
+const personaDelete = byId<HTMLButtonElement>('persona-delete');
+const personaSave = byId<HTMLButtonElement>('persona-save');
+const personaCancel = byId<HTMLButtonElement>('persona-cancel');
+const inspectorPersona = byId<HTMLElement>('inspector-persona');
+const inspectorPersonaId = byId<HTMLElement>('inspector-persona-id');
+const inspectorPersonaVersion = byId<HTMLElement>('inspector-persona-version');
+const inspectorPersonaName = byId<HTMLElement>('inspector-persona-name');
 const loadMoreButton = byId<HTMLButtonElement>('load-more-button');
 const messageList = byId<HTMLOListElement>('messages');
 const emptyState = byId<HTMLElement>('empty-state');
@@ -96,8 +138,20 @@ const workspace = new ConversationWorkspace({
   onError: (message) => showError(chatError, message),
 });
 
+const personaCatalog = new PersonaCatalog();
+const personaSession = new PersonaEditorSession();
+
+const inspectorClient: InspectorClient = {
+  listRequests: (conversationId) => liveInspectorClient.listRequests(conversationId),
+  async getEvents(requestId) {
+    const events = await liveInspectorClient.getEvents(requestId);
+    await paintInspectorPersona(events);
+    return events;
+  },
+};
+
 const inspector = new InspectorController(
-  liveInspectorClient,
+  inspectorClient,
   {
     panel: inspectorPanel,
     requests: byId('inspector-requests'),
@@ -127,6 +181,12 @@ function showLogin(message: string | null = null): void {
   setInspectorOpen(false);
   inspector.reset();
   if (settingsDialog.open) closeSettingsDialog(settingsDialog);
+  if (personaEditorDialog.open) closeSettingsDialog(personaEditorDialog);
+  personaCatalog.clear();
+  personaList.replaceChildren();
+  conversationPersonaPicker.replaceChildren();
+  settingsDefaultPersona.replaceChildren();
+  clearInspectorPersona();
   clearAccountArea(accountAvatar, accountUsername);
   settings.clearMemory();
   workspace.list = [];
@@ -153,6 +213,15 @@ async function showChat(user: User): Promise<void> {
   try {
     await settings.loadFromServer();
     setInspectorOpen(settings.current.inspectorOpenByDefault);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      showLogin('Your session ended. Sign in again.');
+      return;
+    }
+  }
+  try {
+    await personaCatalog.refresh();
+    paintPersonaUi();
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       showLogin('Your session ended. Sign in again.');
@@ -198,6 +267,7 @@ function paintSidebar(current: ConversationWorkspace): void {
     visibleConversationId = current.selectedId;
     loadMessages(current.selected);
   }
+  paintConversationPersona();
   void refreshInspector();
 }
 
@@ -290,6 +360,128 @@ function setInspectorOpen(open: boolean): void {
 async function refreshInspector(): Promise<void> {
   if (!inspector.open) return;
   await inspector.load(workspace.selectedId);
+  if (inspector.selectedRequestId) await paintInspectorPersona(inspector.events);
+  else clearInspectorPersona();
+}
+
+function clearInspectorPersona(): void {
+  renderInspectorPersona(
+    {
+      section: inspectorPersona,
+      id: inspectorPersonaId,
+      version: inspectorPersonaVersion,
+      name: inspectorPersonaName,
+    },
+    { personaId: null, personaVersion: null },
+    null,
+  );
+}
+
+async function paintInspectorPersona(events: PipelineEvent[]): Promise<void> {
+  const fields = personaFieldsFromEvents(events);
+  let name: string | null = null;
+  if (fields.personaId) {
+    try {
+      name = await resolvePersonaName(fields.personaId, personaCatalog.list);
+    } catch {
+      name = DELETED_PERSONA_NAME;
+    }
+  }
+  renderInspectorPersona(
+    {
+      section: inspectorPersona,
+      id: inspectorPersonaId,
+      version: inspectorPersonaVersion,
+      name: inspectorPersonaName,
+    },
+    fields,
+    name,
+  );
+}
+
+function paintPersonaUi(): void {
+  renderPersonaList(personaList, personaCatalog.list, {
+    onOpen: (id) => void openPersona(id, newPersonaButton),
+  });
+  fillPersonaSelect(settingsDefaultPersona, personaCatalog.list, personaCatalog.defaultPersonaId);
+  paintConversationPersona();
+}
+
+function paintConversationPersona(): void {
+  const selected = workspace.selected;
+  const pin = conversationPinStatus(selected, personaCatalog.list, personaCatalog.loaded);
+  const personaId = selected?.personaId ?? null;
+  const known = findPersona(personaCatalog.list, personaId);
+  renderConversationPersonaStatus(conversationPersonaStatus, conversationPersonaNote, pin, known?.name ?? null);
+  fillPersonaSelect(
+    conversationPersonaPicker,
+    personaCatalog.list,
+    personaId,
+    pin === 'deleted' && personaId ? { id: personaId, label: DELETED_PIN_STATUS } : undefined,
+  );
+  conversationPersonaPicker.disabled = !selected;
+}
+
+function confirmAction(message: string): boolean {
+  return window.confirm(message);
+}
+
+function paintEditor(): void {
+  syncEditorControls(personaEditorDialog, personaSession.state);
+  showPersonaAlert(personaEditorError, null);
+  renderVersionList(personaVersionList, personaSession.state.versions, personaSession.state.activeVersion, {
+    onPreview: (version) => void previewPersonaVersion(version),
+    onRevert: (version) => void revertPersonaVersion(version),
+  });
+  renderVersionDiff(personaDiff, readEditorWrite(personaEditorDialog), personaSession.state.diff);
+}
+
+function openPersonaEditor(restoreTo: HTMLElement): void {
+  paintEditor();
+  openSettingsDialog(personaEditorDialog, restoreTo);
+}
+
+async function openPersona(id: string, restoreTo: HTMLElement): Promise<void> {
+  showPersonaAlert(personaEditorError, null);
+  try {
+    await personaSession.open(id);
+    openPersonaEditor(restoreTo);
+  } catch (error) {
+    showError(chatError, error instanceof ApiError ? error.message : 'Could not open that persona.');
+  }
+}
+
+async function refreshPersonas(): Promise<void> {
+  try {
+    await personaCatalog.refresh();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      showLogin('Your session ended. Sign in again.');
+      return;
+    }
+  }
+  paintPersonaUi();
+}
+
+async function previewPersonaVersion(version: number): Promise<void> {
+  try {
+    await personaSession.previewVersion(version);
+    renderVersionDiff(personaDiff, readEditorWrite(personaEditorDialog), personaSession.state.diff);
+  } catch (error) {
+    showPersonaAlert(personaEditorError, error instanceof ApiError ? error.message : 'Could not load that version.');
+  }
+}
+
+async function revertPersonaVersion(version: number): Promise<void> {
+  try {
+    const saved = await personaSession.revert(version, confirmAction);
+    if (!saved) return;
+    paintEditor();
+    await refreshPersonas();
+    announce(`Reverted to version ${version}.`);
+  } catch (error) {
+    showPersonaAlert(personaEditorError, error instanceof ApiError ? error.message : 'Could not revert that persona.');
+  }
 }
 
 async function runWorkspaceAction(action: () => Promise<unknown>): Promise<void> {
@@ -315,6 +507,9 @@ async function send(): Promise<void> {
   if (!conversationId) {
     showError(chatError, 'Start a new chat before sending a message.');
     return;
+  }
+  if (conversationPinStatus(workspace.selected, personaCatalog.list, personaCatalog.loaded) === 'deleted') {
+    announce(DELETED_PIN_NEW_TURNS);
   }
 
   showError(chatError, null);
@@ -431,8 +626,128 @@ loginForm.addEventListener('submit', async (event) => {
 
 accountSettings.addEventListener('click', () => {
   syncSettingsControls(settingsDialog, settings.current);
+  fillPersonaSelect(settingsDefaultPersona, personaCatalog.list, personaCatalog.defaultPersonaId);
   showSettingsAlert(settingsError, null);
   openSettingsDialog(settingsDialog as SettingsDialogElement, accountSettings);
+});
+
+settingsDefaultPersona.addEventListener('change', () => {
+  void personaCatalog.changeDefault(settingsDefaultPersona.value, {
+    showError: (message) => showSettingsAlert(settingsError, message),
+    sync: (id) => fillPersonaSelect(settingsDefaultPersona, personaCatalog.list, id),
+  });
+});
+
+conversationPersonaPicker.addEventListener('change', () => {
+  void changeChatPersona();
+});
+
+async function changeChatPersona(): Promise<void> {
+  const conversationId = workspace.selectedId;
+  const previous = workspace.selected?.personaId ?? null;
+  const next = conversationPersonaPicker.value;
+  if (!conversationId || !next || next === previous) return;
+  const snapshot = await personaCatalog.changeConversationPersona(
+    conversationId,
+    next,
+    {
+      showError: (message) => showError(chatError, message),
+      sync: (id) =>
+        fillPersonaSelect(
+          conversationPersonaPicker,
+          personaCatalog.list,
+          id,
+          conversationPinStatus(workspace.selected, personaCatalog.list, personaCatalog.loaded) === 'deleted' &&
+            workspace.selected?.personaId === id &&
+            id
+            ? { id, label: DELETED_PIN_STATUS }
+            : undefined,
+        ),
+    },
+    previous,
+  );
+  if (!snapshot) return;
+  if (workspace.selected?.id === conversationId) {
+    workspace.selected = {
+      ...workspace.selected,
+      personaId: snapshot.personaId ?? next,
+      personaStatus: snapshot.personaStatus ?? 'active',
+    };
+  }
+  const listItem = workspace.list.find((item) => item.id === conversationId);
+  if (listItem) {
+    listItem.personaId = snapshot.personaId ?? next;
+    listItem.personaStatus = snapshot.personaStatus ?? 'active';
+  }
+  paintConversationPersona();
+  announce('Persona updated for this chat.');
+}
+
+newPersonaButton.addEventListener('click', () => {
+  personaSession.startNew();
+  openPersonaEditor(newPersonaButton);
+});
+
+personaEditorDialog.addEventListener('keydown', (event) => {
+  handleDialogKeydown(event, personaEditorDialog, () => closeSettingsDialog(personaEditorDialog), document.activeElement);
+});
+
+personaCancel.addEventListener('click', () => {
+  closeSettingsDialog(personaEditorDialog);
+});
+
+personaBody.addEventListener('input', () => {
+  personaPreview.textContent = personaBody.value;
+});
+
+personaSuggest.addEventListener('click', () => {
+  void (async () => {
+    try {
+      await personaSession.suggest(readEditorWrite(personaEditorDialog));
+      paintEditor();
+    } catch (error) {
+      showPersonaAlert(personaEditorError, error instanceof ApiError ? error.message : 'Could not suggest a personality.');
+    }
+  })();
+});
+
+personaCopy.addEventListener('click', () => {
+  void (async () => {
+    try {
+      await personaSession.copyBuiltIn();
+      paintEditor();
+    } catch (error) {
+      showPersonaAlert(personaEditorError, error instanceof ApiError ? error.message : 'Could not copy the built-in MIRA.');
+    }
+  })();
+});
+
+personaSave.addEventListener('click', () => {
+  void (async () => {
+    try {
+      const saved = await personaSession.save(readEditorWrite(personaEditorDialog), confirmAction);
+      if (!saved) return;
+      closeSettingsDialog(personaEditorDialog);
+      await refreshPersonas();
+      announce(`Saved ${saved.name}.`);
+    } catch (error) {
+      showPersonaAlert(personaEditorError, error instanceof Error ? error.message : 'Could not save that persona.');
+    }
+  })();
+});
+
+personaDelete.addEventListener('click', () => {
+  void (async () => {
+    try {
+      const removed = await personaSession.remove(confirmAction);
+      if (!removed) return;
+      closeSettingsDialog(personaEditorDialog);
+      await refreshPersonas();
+      announce('Persona deleted.');
+    } catch (error) {
+      showPersonaAlert(personaEditorError, error instanceof ApiError ? error.message : 'Could not delete that persona.');
+    }
+  })();
 });
 
 settingsDialog.addEventListener('keydown', (event) => {
