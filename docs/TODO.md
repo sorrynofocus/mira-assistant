@@ -18,6 +18,7 @@ Last verified against the code: 2026-11-17 (`main` = `1bface7`).
 
 ## Next up
 
+- [ ] **Touch up README Configuration table** · MIRA Boss · owner question 2026-11-17 20:48 MST · cheap · `Mira:ProviderMode` note still says "M1"; `Mira:DatabasePath` note lists only accounts, sessions and audit, but the file now also holds conversations, inspector events and preferences.
 - [ ] **Independent verification of the 08:50 RESOLUTION** · MIRA Reviewer · REVIEW 2026-11-17 09:04 QUESTION / ADVICE · cheap · Confirm in `1bface7`: the 48 h cap in `DiagnosticsApiTests.cs` (7-day interval mutation must fail) and the save ordering in `settings.ts` / `settings.test.ts`. Doesn't block the manual pass.
 - [ ] **Refresh stale status lines after the manual pass** · MIRA Boss · `README.MD` §Status/§Project status ("M3 … in review"); `M2_PERSISTENCE_AND_INSPECTOR.md` header ("browser pass not run") · cheap · M2 is accepted and M3 is pushed; the docs still describe the earlier state.
 
