@@ -237,7 +237,6 @@ export const PERSONA_LIMITS = {
 
 export interface Persona {
   id: string;
-  ownerUserId?: string | null;
   activeVersion: number;
   isBuiltIn: boolean;
   createdAt: string;
@@ -306,39 +305,63 @@ export async function deletePersona(id: string): Promise<void> {
   return deleteRequest(`/api/personas/${id}`);
 }
 
+export const DRAFT_FALLBACK_NAME = 'Suggested';
+export const DRAFT_FALLBACK_MARKDOWN = 'A suggested personality.';
+
+// The draft endpoint requires name and markdown (empty {} is a 400). Fill any missing required
+// field from the description, then from a fixed fallback, so Suggest never sends an empty body.
+export function personaDraftRequest(write?: Partial<PersonaWrite> | null): PersonaWrite {
+  const description = write?.description?.trim() || null;
+  const name = (write?.name?.trim() || description || DRAFT_FALLBACK_NAME).slice(0, PERSONA_LIMITS.maxNameLength);
+  const markdown = (write?.markdown?.trim() || description || DRAFT_FALLBACK_MARKDOWN).slice(0, PERSONA_LIMITS.maxBodyLength);
+  return { name, description, markdown };
+}
+
 export async function draftPersona(write?: Partial<PersonaWrite>): Promise<PersonaDraft> {
-  return postJson<PersonaDraft>('/api/personas/draft', write ?? {});
+  return postJson<PersonaDraft>('/api/personas/draft', personaDraftRequest(write));
 }
 
 export async function getDefaultPersonaId(): Promise<string> {
   return asDefaultPersonaId(await getJson<unknown>('/api/personas/default'));
 }
 
+// PUT /api/personas/default and PUT /api/conversations/{id}/persona return 204 with no body.
 export async function setDefaultPersona(personaId: string): Promise<string> {
-  const body = await putJson<unknown>('/api/personas/default', { personaId });
-  return body === undefined ? personaId : asDefaultPersonaId(body);
+  await putNoContent('/api/personas/default', { personaId });
+  return personaId;
 }
 
-export async function setConversationPersona(conversationId: string, personaId: string): Promise<ConversationSnapshot | undefined> {
-  return putJson<ConversationSnapshot | undefined>(`/api/conversations/${conversationId}/persona`, { personaId });
+export async function setConversationPersona(conversationId: string, personaId: string): Promise<void> {
+  await putNoContent(`/api/conversations/${conversationId}/persona`, { personaId });
 }
 
+// Chunk A lists are { items: [...] }.
 export function asPersonaList(body: unknown): Persona[] {
-  return unwrapList<Persona>(body, ['items', 'personas']);
+  return asItems(body, 'Unexpected persona list response.');
 }
 
 export function asPersonaVersionList(body: unknown): PersonaVersionInfo[] {
-  return unwrapList<PersonaVersionInfo>(body, ['items', 'versions']);
+  return asItems(body, 'Unexpected persona version list response.');
 }
 
 export function asDefaultPersonaId(body: unknown): string {
-  if (typeof body === 'string' && body) return body;
-  if (typeof body === 'object' && body !== null) {
-    const record = body as { personaId?: unknown; id?: unknown };
-    if (typeof record.personaId === 'string' && record.personaId) return record.personaId;
-    if (typeof record.id === 'string' && record.id) return record.id;
+  if (typeof body === 'object' && body !== null && typeof (body as { personaId?: unknown }).personaId === 'string') {
+    const id = (body as { personaId: string }).personaId;
+    if (id) return id;
   }
-  return BUILTIN_MIRA_PERSONA_ID;
+  throw new Error('Unexpected default persona response.');
+}
+
+function asItems<T>(body: unknown, message: string): T[] {
+  if (typeof body === 'object' && body !== null && Array.isArray((body as { items?: unknown }).items)) {
+    return (body as { items: T[] }).items;
+  }
+  throw new Error(message);
+}
+
+async function putNoContent(path: string, body: unknown): Promise<void> {
+  const response = await mutate('PUT', path, body);
+  if (!response.ok) throw await toError(response);
 }
 
 function asOptionalString(value: unknown): string | undefined {

@@ -21,7 +21,6 @@ import {
 
 const mira: Persona = {
   id: BUILTIN_MIRA_PERSONA_ID,
-  ownerUserId: null,
   activeVersion: 1,
   isBuiltIn: true,
   createdAt: '2026-11-18T00:00:00Z',
@@ -32,7 +31,6 @@ const mira: Persona = {
 
 const jack: Persona = {
   id: 'jack-id',
-  ownerUserId: 'user-1',
   activeVersion: 2,
   isBuiltIn: false,
   createdAt: '2026-11-18T00:00:00Z',
@@ -267,7 +265,7 @@ describe('deleted pin and picker', () => {
       },
       mira.id,
     );
-    expect(result).toBeUndefined();
+    expect(result).toBe(false);
     expect(fetchMock.mock.calls[0][0]).toBe('/api/conversations/conv-1/persona');
     expect(fetchMock.mock.calls[0][1]).toMatchObject({
       method: 'PUT',
@@ -280,10 +278,7 @@ describe('deleted pin and picker', () => {
   });
 
   it('keeps the new picker value after a successful PUT', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ id: 'conv-1', personaId: jack.id, personaStatus: 'active', messages: [] })),
-    );
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(undefined, 204)));
     setCsrfToken('csrf-token');
     const catalog = new PersonaCatalog();
     const saved = await catalog.changeConversationPersona(
@@ -292,7 +287,7 @@ describe('deleted pin and picker', () => {
       { showError() {}, sync() {} },
       mira.id,
     );
-    expect(saved?.personaId).toBe(jack.id);
+    expect(saved).toBe(true);
   });
 });
 
@@ -307,7 +302,7 @@ describe('editor save, confirm, revert and delete', () => {
           activeVersion: 3,
         }),
       )
-      .mockResolvedValueOnce(jsonResponse([{ personaId: jack.id, version: 3, name: jack.name, description: jack.description, createdAt: jack.updatedAt }]));
+      .mockResolvedValueOnce(jsonResponse({ items: [{ personaId: jack.id, version: 3, name: jack.name, description: jack.description, createdAt: jack.updatedAt }] }));
     vi.stubGlobal('fetch', fetchMock);
     setCsrfToken('csrf-token');
     const session = new PersonaEditorSession();
@@ -350,7 +345,7 @@ describe('editor save, confirm, revert and delete', () => {
           activeVersion: 1,
         }),
       )
-      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ items: [] }))
       .mockResolvedValueOnce(jsonResponse(undefined, 204));
     vi.stubGlobal('fetch', fetchMock);
     setCsrfToken('csrf-token');
@@ -404,13 +399,16 @@ describe('editor save, confirm, revert and delete', () => {
   });
 
   it('lands a draft in the editor as a choice and still requires Save', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ name: 'Suggested', description: null, markdown: 'A dry wit.' })),
-    );
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ name: 'Suggested', description: null, markdown: 'A dry wit.' }));
+    vi.stubGlobal('fetch', fetchMock);
     const session = new PersonaEditorSession();
     session.startNew();
     await session.suggest({ name: '', description: null, markdown: '' });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      name: 'Suggested',
+      description: null,
+      markdown: 'A suggested personality.',
+    });
     expect(session.state.isChoice).toBe(true);
     expect(session.state.id).toBeNull();
     expect(session.state.markdown).toBe('A dry wit.');
@@ -421,6 +419,22 @@ describe('editor save, confirm, revert and delete', () => {
     expect(tree.body.value).toBe('A dry wit.');
     expect(tree.preview.textContent).toBe('A dry wit.');
     expect(tree.preview.innerHTML).toBe('');
+
+    fetchMock.mockClear();
+    await session.suggest();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      name: 'Suggested',
+      description: null,
+      markdown: 'A suggested personality.',
+    });
+
+    fetchMock.mockClear();
+    await session.suggest({ name: '', description: 'Dry wit', markdown: '' });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      name: 'Dry wit',
+      description: 'Dry wit',
+      markdown: 'Dry wit',
+    });
   });
 
   it('reverts a failed default-persona PUT and shows role=alert', async () => {

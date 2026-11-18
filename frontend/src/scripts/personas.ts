@@ -392,15 +392,16 @@ export class PersonaCatalog {
     personaId: string,
     ui: { showError: (message: string | null) => void; sync: (id: string) => void },
     previousId: string | null,
-  ): Promise<ConversationSnapshot | undefined> {
+  ): Promise<boolean> {
     ui.sync(personaId);
     ui.showError(null);
     try {
-      return await setConversationPersona(conversationId, personaId);
+      await setConversationPersona(conversationId, personaId);
+      return true;
     } catch (error) {
       if (previousId) ui.sync(previousId);
       ui.showError(error instanceof ApiError ? error.message : 'Could not change this chat’s persona.');
-      return undefined;
+      return false;
     }
   }
 }

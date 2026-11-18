@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) planned;** plan re-check **PASS**; chunk 0 contracts landed (this commit). A and B may start in parallel. Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
-- **Working branch/commit:** `main` is two local commits ahead of `origin/main` = `2c6751b` (M4 plan + chunk 0 contracts); not pushed; any push needs fresh, direct owner approval
-- **Last verified build:** 2026-11-18 00:17 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), chunk 0: `dotnet build --no-incremental` 0 warnings/0 errors, 249/249 xUnit (twice). Frontend was untouched, so Vitest/Astro were not rerun. Requires Node >=22.23.4
+- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) implemented** in this tree (chunks 0, A, B, and C); awaiting MIRA Reviewer and MIRA Security implementation review. Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
+- **Working branch/commit:** `main` is five local commits ahead of `origin/main` = `2c6751b` (M4 plan, chunk 0, A, B, and C integration); not pushed; any push needs fresh, direct owner approval
+- **Last verified build:** 2026-11-18 00:39 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), chunk C: `dotnet build --no-incremental` 0 warnings/0 errors, 293/293 xUnit (twice); `npm ci`, Vitest 64/64, `astro check` 0/0/0, `astro build` 1 page. Requires Node >=22.23.4
 - **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 Windows manual pass; roadmap numbering is done; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION)
 - **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M4 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16)
-- **Next concrete action:** MIRA Backend implements chunk A and MIRA Frontend implements chunk B, in parallel, from worktrees on this chunk 0 commit. The owner's M3 Windows manual pass remains open.
-- **Turn:** MIRA Backend (Implementer), chunk A; and MIRA Frontend (Implementer), chunk B (in parallel)
+- **Next concrete action:** MIRA Reviewer and MIRA Security, implementation review of M4 (chunks 0/A/B/C). The owner's M3 Windows manual pass remains open.
+- **Turn:** MIRA Reviewer (Reviewer) and MIRA Security (Security reviewer), implementation review of M4
 
 ---
 
@@ -1652,3 +1652,56 @@ Frontend was not run.
 **Decisions needed from the owner:** none. No push.
 
 **Next turn:** MIRA Backend (Implementer), chunk A; and MIRA Frontend (Implementer), chunk B, in parallel. Work in the prepared worktrees; do not push; do not edit `REVIEW.md` or docs (send drafted entries and TODO items to MIRA Boss).
+
+## 2026-11-18 00:39 MST | MIRA Boss | IMPLEMENTATION
+
+**Objective:** M4 chunk C integration: merge chunks 0, A, and B onto `main`, apply the client/API fixes, curl-smoke a temp database, update the README and TODO list, and run the full gates. Acting on a direct owner instruction. Do not push.
+
+**Branch and commit:** local `main`, this chunk C commit, on cherry-picked A and B (authorship and trailers kept). Not pushed.
+
+**Files examined or changed (this commit):**
+- `backend/Mira.Api/Personas/PersonaEndpoints.cs` — list/detail/create/update/revert responses omit `ownerUserId`
+- `backend/Mira.Tests/PersonaApiTests.cs` — assert `ownerUserId` is absent
+- `frontend/src/scripts/api.ts`, `personas.ts`, `chat.ts`, `personas.test.ts` — draft always sends name and markdown; default and conversation-persona PUTs expect 204 with no body; lists parse `{ items }`; default GET parses `{ personaId }`
+- `README.MD`, `docs/M2_PERSISTENCE_AND_INSPECTOR.md`, `docs/TODO.md`, `REVIEW.md`
+
+**Earlier commits on this branch (kept as-is):**
+- `9e41d2b` `docs(m4): personas plan` (author: MIRA Boss)
+- `3558e9c` `feat(m4): chunk 0 persona contracts` (author: MIRA Boss)
+- cherry-picked A as `936ae2b` from `8ee2907` (author: MIRA Backend)
+- cherry-picked B as `1d8ee37` from `8d6988b` (author: MIRA Frontend; Frontend trailer kept)
+
+**Changes / findings:**
+- Suggest/draft: `personaDraftRequest` always sends `name` and `markdown` (from the editor, else the description, else `Suggested` / `A suggested personality.`). An empty `{}` is a 400 on the API and is no longer sent.
+- `PUT /api/personas/default` and `PUT /api/conversations/{id}/persona` are 204 with no body. The picker success path now updates the local pin from the requested id (it previously treated a missing body as failure).
+- Lists from chunk A are `{ items: [...] }` for `GET /api/personas` and `GET /api/personas/{id}/versions`. `GET /api/personas/default` is `{ personaId }`. The client was tightened to those shapes.
+- `ownerUserId` is dropped from persona API responses (list, create, get, update, revert). The frontend did not need it. Version payloads never had it.
+- **Decisions recorded:** the `PreferenceStoreTests.cs` edit in chunk A is approved (migration-5 upgrade of the version-3 fixture). Built-in writes return **403** (plan allowed 403 or 409).
+- README Configuration table and stale status lines were updated; those TODO items are ticked. Chunk A's four follow-ups, plus the optional `inspector.ts` event-row item, were added to `docs/TODO.md`.
+
+**Commands run and results:**
+```text
+export PATH=$HOME/.dotnet:$PATH
+unset Mira__/MIRA_ variables
+dotnet build --no-incremental
+0 warnings, 0 errors
+dotnet test  (twice)
+293/293 passed, twice
+cd frontend && npm ci && npx vitest run && npx astro check && npx astro build
+Vitest 64/64, astro check 0/0/0, astro build 1 page
+curl smoke against a temp Mira__DatabasePath (create-user + API on 127.0.0.1:5080):
+create 201 (no ownerUserId), save 200 v2, GET /versions {items:[2,1]}, version 1 body,
+revert 200 to v1, PUT default 204 empty body, PUT conversation persona 204 empty body,
+DELETE of the current default 204, default reset to built-in MIRA,
+dangling pin kept with personaStatus: "deleted";
+POST /draft {} -> 400; PUT built-in -> 403.
+SMOKE PASS. API stopped.
+```
+
+**Deviations:** none from the owner's chunk C instructions. SQLite persona-pin still uses `SqlitePersonaStore` directly (logged as a TODO). `ChatRequest` still has no name field (mock extra interface, TODO). `inspector.ts` event rows do not yet show persona id/version (optional TODO).
+
+**Security/privacy concerns:** none open. Persona API responses no longer include `ownerUserId`. Names, descriptions, and bodies are still not logged. Built-in writes are 403 before the body is read. Fixtures and smoke data are synthetic.
+
+**Decisions needed from the owner:** none for this integration. No push. The M3 Windows manual pass remains an open owner item.
+
+**Next turn:** MIRA Reviewer (Reviewer) and MIRA Security (Security reviewer), implementation review of M4.

@@ -22,7 +22,7 @@ MIRA is STT 3.0. It grew out of the owner's earlier speech-to-text assistant and
 - **Local-first and private.** Conversations, memory, personas, and settings live in a local SQLite database and private files on the owner's machine. Provider keys stay on the backend. Requests to an AI provider still send that provider the content it needs.
 - **Memory you control.** MIRA can suggest things to remember. You can inspect, edit, export, and delete them, and sensitive items wait for your approval.
 - **Voice in and out, with replaceable providers.** Transcription, chat, and speech are configured independently, so any one of them can be replaced.
-- **Personas.** A `whoami.md` file sets MIRA's voice and character. You can create or change personas, but the model cannot silently rewrite them.
+- **Personas.** M4 stores personas in the local SQLite database (a built-in MIRA preset plus user-created personas). You can create or change your own, but the model cannot silently rewrite them. There is no on-disk user `whoami.md` in M4.
 - **Optional web search** (Tavily), used only when it is enabled.
 - **Owner-governed boundaries.** The model may propose plans, memories, or rule changes. Only the owner can approve them, through policy the application enforces.
 
@@ -35,7 +35,7 @@ MIRA is STT 3.0. It grew out of the owner's earlier speech-to-text assistant and
 
 ### Status
 
-M0 (the local baseline) and M1 (local sign-in plus streamed chat against a mock model, with no paid AI connected) are done. M2 (conversation persistence and a redacted pipeline inspector, on plain SQLite per [ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)) is done; details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M3 (an account area and per-user settings: themes, font size, inspector default) is implemented in this tree and in review; see [the M3 account and settings note](docs/M3_ACCOUNT_SETTINGS.md). Personas, memory, voice, and web search come in later milestones. The full roadmap is in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
+M0 (the local baseline) and M1 (local sign-in plus streamed chat against a mock model, with no paid AI connected) are done. M2 (conversation persistence and a redacted pipeline inspector, on plain SQLite per [ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)) is accepted; details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M3 (an account area and per-user settings: themes, font size, inspector default) is pushed, pending the owner's Windows manual pass; see [the M3 account and settings note](docs/M3_ACCOUNT_SETTINGS.md). **M4 (personas)** is implemented in this tree and awaiting implementation review; see [the M4 personas plan](docs/M4_PERSONAS.md). Memory, voice, and web search come in later milestones. The full roadmap numbering is in [the STT 3.0 handoff](docs/STT3_HANDOFF.md) §10 note.
 
 
 ---
@@ -82,11 +82,11 @@ Then open <http://127.0.0.1:4321/> in your browser and sign in with that account
 
 ### What the pieces are
 
-MIRA is currently at milestone **M3** (implemented, in review): local sign-in, a streamed text chat against a mock model, saved conversations (several per user), a redacted pipeline inspector, and per-user settings (theme, font size, inspector default). Persona editing, memory, voice, and web search come in later milestones.
+MIRA is currently at milestone **M4** (personas implemented, awaiting Reviewer and Security implementation review): local sign-in, a streamed text chat against a mock model, saved conversations (several per user), a redacted pipeline inspector, per-user settings (theme, font size, inspector default), and user-created personas with a default and per-chat pin. Memory, voice, and web search come in later milestones. M3 remains pushed pending the owner's Windows manual pass.
 
 - **Frontend: [Astro](https://astro.build/).** Builds a static web page. The page logic is plain (vanilla) TypeScript, with no React/Vue/Svelte. It runs on Node.js.
-- **Backend: ASP.NET Core Minimal API.** A small C# web server on .NET 10. It exposes `GET /health/live` (returns `{"status":"ok"}`), local username/password sign-in, a streaming chat endpoint, conversation endpoints, and read-only diagnostics for the inspector. Everything under `/api` requires a signed-in user except the sign-in and CSRF-token endpoints.
-- **Local database: SQLite.** Accounts, sessions, conversations, messages and inspector timing events are stored in a SQLite file outside the repository (`%LOCALAPPDATA%\MIRA\mira.db` by default). Inspector events never contain message text and are deleted after 30 days.
+- **Backend: ASP.NET Core Minimal API.** A small C# web server on .NET 10. It exposes `GET /health/live` (returns `{"status":"ok"}`), local username/password sign-in, a streaming chat endpoint, conversation endpoints, read-only diagnostics for the inspector, preferences, and persona endpoints (`/api/personas`, including a per-conversation pin). Everything under `/api` requires a signed-in user except the sign-in and CSRF-token endpoints.
+- **Local database: SQLite.** Accounts, sessions, conversations, messages, inspector timing events, preferences, and personas are stored in a SQLite file outside the repository (`%LOCALAPPDATA%\MIRA\mira.db` by default). Inspector events never contain message text or persona bodies and are deleted after 30 days.
 - **Mock model providers.** Chat, transcription, and speech are behind replaceable interfaces. M1 uses only deterministic mocks, so you do not need Azure keys or any paid service.
 - **Tests: xUnit and Vitest.** .NET unit and integration tests for configuration, authentication, sessions, CSRF, streaming, storage, governance, and the API host; Vitest tests for the frontend stream parser, sign-out, conversation list, inspector, themes and settings.
 
@@ -260,8 +260,8 @@ Available settings (out-of-range values stop the API at startup):
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `Mira:ProviderMode` | `Mock` | Only `Mock` is accepted in M1. |
-| `Mira:DatabasePath` | `%LOCALAPPDATA%\MIRA\mira.db` | SQLite file for accounts, sessions, and audit records. A relative path is resolved against the current folder. |
+| `Mira:ProviderMode` | `Mock` | Only `Mock` is accepted (M1–M4; no paid chat provider). |
+| `Mira:DatabasePath` | `%LOCALAPPDATA%\MIRA\mira.db` | SQLite file for accounts, sessions, audit records, conversations, inspector events, preferences, and personas. A relative path is resolved against the current folder. |
 | `Mira:AllowedOrigins` | `http://127.0.0.1:4321`, `http://localhost:4321`, `http://127.0.0.1:5080`, `http://localhost:5080` | Origins allowed to send state-changing requests (array). |
 | `Mira:Auth:SessionIdleMinutes` | `30` | Session ends after this much inactivity (1–1440). |
 | `Mira:Auth:SessionAbsoluteHours` | `12` | Session ends this long after sign-in regardless of activity (1–168). |
@@ -305,15 +305,17 @@ Limits:
 
 ## Project status and docs
 
-**M3 is implemented** in this tree and in review: a lower-left account area, a Settings dialog, three theme choices (MIRA Dark, Sovereign, Match system), font size and an inspector default, saved per user (`GET`/`PUT /api/me/preferences`). Details are in [the M3 account and settings note](docs/M3_ACCOUNT_SETTINGS.md).
+**M4 (personas) is implemented** in this tree and awaiting Reviewer and Security implementation review: a built-in MIRA persona, user-created personas (name, description, Markdown body, at most 5 versions), a per-user default, and a per-conversation pin. Details are in [the M4 personas plan](docs/M4_PERSONAS.md).
+
+**M3 is pushed** (`1bface7` and later follow-ups), pending the owner's Windows manual pass: a lower-left account area, a Settings dialog, three theme choices (MIRA Dark, Sovereign, Match system), font size and an inspector default, saved per user (`GET`/`PUT /api/me/preferences`). Details are in [the M3 account and settings note](docs/M3_ACCOUNT_SETTINGS.md).
 
 **M2 is done** (accepted 2026-11-17): multiple conversations per user are stored in SQLite, a page reload keeps history, and a hidden-by-default inspector shows redacted pipeline events and timings. Details are in [the M2 persistence and inspector note](docs/M2_PERSISTENCE_AND_INSPECTOR.md). M2 uses plain SQLite ([ADR 0002](docs/decisions/0002-plain-sqlite-for-m2.md)), not EF Core.
 
-**M1** (local authentication and mock streamed chat) and **M0** (the local baseline) remain the foundation; see [the M1 authentication and streaming note](docs/M1_AUTH_AND_STREAMING.md) and [the M0 architecture note](docs/M0_ARCHITECTURE.md). Persona editing, memory, voice, and web search are still scheduled in [the STT 3.0 handoff](docs/STT3_HANDOFF.md).
+**M1** (local authentication and mock streamed chat) and **M0** (the local baseline) remain the foundation; see [the M1 authentication and streaming note](docs/M1_AUTH_AND_STREAMING.md) and [the M0 architecture note](docs/M0_ARCHITECTURE.md). Memory, voice, and web search are still scheduled in [the STT 3.0 handoff](docs/STT3_HANDOFF.md) (MIRA numbers: memory M5, STT M6, TTS M7, Tavily M8, hardening M9).
 
 The backend is local-only by design (loopback `127.0.0.1` only) and must not be exposed on a network yet.
 
-Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), [the M3 note](docs/M3_ACCOUNT_SETTINGS.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md); open follow-ups are tracked in [docs/TODO.md](docs/TODO.md).
+Architecture and collaboration rules are in [the M0 architecture note](docs/M0_ARCHITECTURE.md), [the M1 note](docs/M1_AUTH_AND_STREAMING.md), [the M2 note](docs/M2_PERSISTENCE_AND_INSPECTOR.md), [the M3 note](docs/M3_ACCOUNT_SETTINGS.md), [the M4 personas plan](docs/M4_PERSONAS.md), and [AGENTS.md](AGENTS.md). Implementation and review evidence is appended to [REVIEW.md](REVIEW.md); open follow-ups are tracked in [docs/TODO.md](docs/TODO.md).
 
 ## How the AI agents stay in sync
 

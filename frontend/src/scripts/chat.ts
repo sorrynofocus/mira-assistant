@@ -647,7 +647,7 @@ async function changeChatPersona(): Promise<void> {
   const previous = workspace.selected?.personaId ?? null;
   const next = conversationPersonaPicker.value;
   if (!conversationId || !next || next === previous) return;
-  const snapshot = await personaCatalog.changeConversationPersona(
+  const saved = await personaCatalog.changeConversationPersona(
     conversationId,
     next,
     {
@@ -666,18 +666,18 @@ async function changeChatPersona(): Promise<void> {
     },
     previous,
   );
-  if (!snapshot) return;
+  if (!saved) return;
   if (workspace.selected?.id === conversationId) {
     workspace.selected = {
       ...workspace.selected,
-      personaId: snapshot.personaId ?? next,
-      personaStatus: snapshot.personaStatus ?? 'active',
+      personaId: next,
+      personaStatus: 'active',
     };
   }
   const listItem = workspace.list.find((item) => item.id === conversationId);
   if (listItem) {
-    listItem.personaId = snapshot.personaId ?? next;
-    listItem.personaStatus = snapshot.personaStatus ?? 'active';
+    listItem.personaId = next;
+    listItem.personaStatus = 'active';
   }
   paintConversationPersona();
   announce('Persona updated for this chat.');

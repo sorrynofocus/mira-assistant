@@ -1,8 +1,8 @@
 # M2 conversation persistence and inspector
 
-> **Status:** Implemented in this tree (plain SQLite, [ADR 0002](decisions/0002-plain-sqlite-for-m2.md)). M0 boundaries in [M0_ARCHITECTURE.md](M0_ARCHITECTURE.md) and M1 auth/streaming in [M1_AUTH_AND_STREAMING.md](M1_AUTH_AND_STREAMING.md) still apply. The later milestones in [STT3_HANDOFF.md](STT3_HANDOFF.md) are unchanged.
+> **Status:** Accepted 2026-11-17 (plain SQLite, [ADR 0002](decisions/0002-plain-sqlite-for-m2.md)). M0 boundaries in [M0_ARCHITECTURE.md](M0_ARCHITECTURE.md) and M1 auth/streaming in [M1_AUTH_AND_STREAMING.md](M1_AUTH_AND_STREAMING.md) still apply. Later work uses the MIRA numbering in [STT3_HANDOFF.md](STT3_HANDOFF.md) §10 (account settings M3, already shipped; personas M4).
 >
-> This note is taken from the merged code, not from the planning brief. A live browser and keyboard pass of the steps in section 9 has **not** been run in the session that wrote this file; those steps are unverified.
+> This note is taken from the merged M2 code, not from the planning brief. Schema history below describes M2 (migrations 2 and 3); later milestones append further migrations (M3 migration 4, M4 migration 5).
 
 ## 1. Overview
 

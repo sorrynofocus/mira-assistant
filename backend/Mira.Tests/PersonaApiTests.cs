@@ -60,6 +60,7 @@ public sealed class PersonaApiTests
         Assert.Equal($"/api/personas/{id}", created.Headers.Location?.OriginalString);
         Assert.Equal(1, first.GetProperty("activeVersion").GetInt32());
         Assert.False(first.GetProperty("isBuiltIn").GetBoolean());
+        Assert.False(first.TryGetProperty("ownerUserId", out _));
 
         var updated = await PutJsonAsync(client, $"{Personas}/{id}", """{"name":"Jackie","markdown":"Body two"}""");
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
@@ -68,7 +69,11 @@ public sealed class PersonaApiTests
         var list = await client.GetFromJsonAsync<JsonElement>(Personas);
         var items = list.GetProperty("items").EnumerateArray().ToList();
         Assert.Equal([PersonaIds.BuiltInMira, id], items.Select(i => i.GetProperty("id").GetGuid()));
-        Assert.All(items, i => Assert.False(i.TryGetProperty("markdown", out _)));
+        Assert.All(items, i =>
+        {
+            Assert.False(i.TryGetProperty("markdown", out _));
+            Assert.False(i.TryGetProperty("ownerUserId", out _));
+        });
 
         var versions = (await client.GetFromJsonAsync<JsonElement>($"{Personas}/{id}/versions")).GetProperty("items").EnumerateArray().ToList();
         Assert.Equal([2, 1], versions.Select(v => v.GetProperty("version").GetInt32()));
@@ -79,6 +84,7 @@ public sealed class PersonaApiTests
         var reverted = await PostJsonAsync(client, $"{Personas}/{id}/revert", """{"version":1}""");
         Assert.Equal(HttpStatusCode.OK, reverted.StatusCode);
         var detail = await client.GetFromJsonAsync<JsonElement>($"{Personas}/{id}");
+        Assert.False(detail.TryGetProperty("ownerUserId", out _));
         Assert.Equal(("Jack", "First", "Body one", 1),
             (detail.GetProperty("name").GetString(), detail.GetProperty("description").GetString(), detail.GetProperty("markdown").GetString(),
              detail.GetProperty("activeVersion").GetInt32()));
@@ -105,6 +111,7 @@ public sealed class PersonaApiTests
         var detail = await client.GetFromJsonAsync<JsonElement>(builtIn);
         Assert.Equal(BuiltInPersona.Markdown, detail.GetProperty("markdown").GetString());
         Assert.True(detail.GetProperty("isBuiltIn").GetBoolean());
+        Assert.False(detail.TryGetProperty("ownerUserId", out _));
 
         // Bodies that would otherwise be 400/415 prove the 403 is decided first.
         foreach (var response in new[]

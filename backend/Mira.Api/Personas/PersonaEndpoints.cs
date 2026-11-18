@@ -4,7 +4,35 @@ using Mira.Core;
 
 namespace Mira.Api.Personas;
 
-public sealed record PersonaListResponse(IReadOnlyList<Persona> Items);
+// API response shapes omit OwnerUserId (the client does not need it; the owner always comes from the principal).
+public sealed record PersonaResponse(
+    Guid Id,
+    int ActiveVersion,
+    bool IsBuiltIn,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    string Name,
+    string? Description)
+{
+    public static PersonaResponse From(Persona persona) => new(
+        persona.Id, persona.ActiveVersion, persona.IsBuiltIn, persona.CreatedAt, persona.UpdatedAt, persona.Name, persona.Description);
+}
+
+public sealed record PersonaDetailResponse(
+    Guid Id,
+    int ActiveVersion,
+    bool IsBuiltIn,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    string Name,
+    string? Description,
+    string Markdown)
+{
+    public static PersonaDetailResponse From(PersonaDetail persona) => new(
+        persona.Id, persona.ActiveVersion, persona.IsBuiltIn, persona.CreatedAt, persona.UpdatedAt, persona.Name, persona.Description, persona.Markdown);
+}
+
+public sealed record PersonaListResponse(IReadOnlyList<PersonaResponse> Items);
 
 public sealed record PersonaVersionListResponse(IReadOnlyList<PersonaVersionInfo> Items);
 
@@ -64,7 +92,7 @@ public static class PersonaEndpoints
         });
 
         group.MapGet("/", async (HttpContext http, IPersonaStore store, CancellationToken cancellationToken) =>
-            Results.Ok(new PersonaListResponse(await store.ListAsync(CurrentUser.GetUserId(http.User), cancellationToken))));
+            Results.Ok(new PersonaListResponse((await store.ListAsync(CurrentUser.GetUserId(http.User), cancellationToken)).Select(PersonaResponse.From).ToArray())));
 
         group.MapPost("/", async (HttpContext http, IPersonaStore store, CancellationToken cancellationToken) =>
         {
@@ -76,7 +104,7 @@ public static class PersonaEndpoints
                 try
                 {
                     var created = await store.CreateAsync(CurrentUser.GetUserId(http.User), draft!.Name, draft.Description, draft.Markdown, cancellationToken);
-                    return Results.Created($"/api/personas/{created.Id}", created);
+                    return Results.Created($"/api/personas/{created.Id}", PersonaDetailResponse.From(created));
                 }
                 catch (PersonaConflictException)
                 {
@@ -86,7 +114,7 @@ public static class PersonaEndpoints
         });
 
         group.MapGet("/{id:guid}", async (Guid id, HttpContext http, IPersonaStore store, CancellationToken cancellationToken) =>
-            await store.GetAsync(CurrentUser.GetUserId(http.User), id, cancellationToken) is { } persona ? Results.Ok(persona) : NotFound());
+            await store.GetAsync(CurrentUser.GetUserId(http.User), id, cancellationToken) is { } persona ? Results.Ok(PersonaDetailResponse.From(persona)) : NotFound());
 
         group.MapPut("/{id:guid}", async (Guid id, HttpContext http, IPersonaStore store, CancellationToken cancellationToken) =>
         {
@@ -98,7 +126,7 @@ public static class PersonaEndpoints
                 if (!PersonaRules.TryParseUpdate(document.RootElement, out var draft, out var error)) return Invalid(error!);
                 try
                 {
-                    return Results.Ok(await store.UpdateAsync(CurrentUser.GetUserId(http.User), id, draft!.Name, draft.Description, draft.Markdown, cancellationToken));
+                    return Results.Ok(PersonaDetailResponse.From(await store.UpdateAsync(CurrentUser.GetUserId(http.User), id, draft!.Name, draft.Description, draft.Markdown, cancellationToken)));
                 }
                 catch (KeyNotFoundException)
                 {
@@ -137,7 +165,7 @@ public static class PersonaEndpoints
                 if (!PersonaRules.TryParseRevert(document.RootElement, out var version, out var error)) return Invalid(error!);
                 try
                 {
-                    return Results.Ok(await store.RevertAsync(CurrentUser.GetUserId(http.User), id, version, cancellationToken));
+                    return Results.Ok(PersonaDetailResponse.From(await store.RevertAsync(CurrentUser.GetUserId(http.User), id, version, cancellationToken)));
                 }
                 catch (KeyNotFoundException)
                 {
