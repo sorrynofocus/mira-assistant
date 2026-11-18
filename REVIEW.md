@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 (conversation persistence and inspector) ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `4a9673f` and `cd86c7f`. **M3 (account area and settings) reviewed (MIRA Security 08:45 PASS; MIRA Reviewer 08:46, Minors resolved 08:50) and pushed as `1bface7`: pushed-pending-owner-manual-pass.** Plan: `docs/M3_ACCOUNT_SETTINGS.md`; data layer = plain SQLite (ADR 0002)
-- **Working branch/commit:** `main` = `origin/main` = `1bface7` (M3), plus a local docs commit adding `docs/TODO.md` (09:07 DECISION), not pushed; any push needs fresh, direct owner approval
-- **Last verified build:** 2026-11-17 08:49 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), with M3 and the 08:50 fixes: dotnet build --no-incremental 0 warnings/0 errors, 215/215 xUnit (twice), 51/51 Vitest, Astro check 0/0/0, build 1 page. Windows manual pass pending (another PC). Requires Node >=22.23.4
-- **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 Windows manual pass, roadmap numbering; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION)
-- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M3 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16; see the 21:50 DECISION + ROLE CHANGE + MILESTONE CLOSE entry)
-- **Next concrete action:** the owner runs the M3 Windows manual pass on another PC (screenshots waived)
-- **Turn:** Owner, M3 Windows manual pass per the 2026-11-17 08:51 DECISION (see `docs/TODO.md`)
+- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) planned;** MIRA Reviewer's 00:10 MST re-check is **PASS** (no open Blocker or Major; Majors 1–2 closed). Chunk 0 may start. Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
+- **Working branch/commit:** `main` is one local docs commit ahead of `origin/main` = `2c6751b` (M4 plan, amended after the 00:10 VERIFICATION); not pushed; any push needs fresh, direct owner approval
+- **Last verified build:** 2026-11-17, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), at `2c6751b`: dotnet build --no-incremental 0 warnings/0 errors, 223/223 xUnit (twice), 52/52 Vitest, Astro check 0/0/0, build 1 page. Requires Node >=22.23.4
+- **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 Windows manual pass; roadmap numbering is done; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION)
+- **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M4 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16)
+- **Next concrete action:** MIRA Boss implements chunk 0 (persona contracts). The owner's M3 Windows manual pass remains open.
+- **Turn:** MIRA Boss (Implementer lead), implement chunk 0 persona contracts
 
 ---
 
@@ -1427,3 +1427,196 @@ npx astro check / astro build                         PASS: 0/0/0; 1 page
 ## 2026-11-17 23:31 MST | MIRA Security (pasted by MIRA Boss) | SECURITY REVIEW
 
 ba1372b `showInspectLinks` follow-up: **PASS**, with no Blocker, Major or Minor. The allowlist, boolean-only validation, no echo or logging, principal-only owner, CSRF and owner-scoped SQL are unchanged. The frontend writes only constant attribute values and caches nothing new. Nit: indentation in `settings.ts` (fixed in the same commit before the push).
+
+---
+
+## 2026-11-17 23:39 MST | Grok (MIRA Boss, team lead) | INTENT
+
+**Objective:** Record the M4 (persona system) plan as one Grok-team entry. Acting on a direct owner instruction; Turn was Owner (M3 Windows manual pass). Full plan: `docs/M4_PERSONAS.md`.
+
+**How received and limits:** The owner (sorrynofocus) chose personas as the next milestone **directly to MIRA Boss** on 2026-11-17 at 23:22 MST, and confirmed all six recommended defaults **directly to MIRA Boss** at 23:39 MST. This entry records that plan; it authorizes no implementation start until the plan reviews pass, and no push.
+
+**Branch and commit:** `main` = `origin/main` = `2c6751b`; this is one local docs commit on top. Not pushed.
+
+**Scope:** built-in **MIRA** persona plus user-created personas (copy MIRA to customize); name, optional description, and a Markdown body; a per-user default for new chats, changeable per conversation; explicit Save; every version kept and revertible; limits 20 personas, name 1–80, description 0–200, body 1–8,000; inspector shows id, name, and version only; Mock-only chat, with a deterministic template preview for "Suggest a personality" until a real model is approved. Governance stays above the persona and cannot be weakened by one. Out of scope: ephemeral style sliders, on-disk `whoami.md`, a paid/live-model drafter, a governance editor, memory, voice, and search.
+
+**API (existing `/api` group: auth required, CSRF on unsafe methods, loopback only, owner from the principal):** `GET/POST /api/personas`, `GET/PUT /api/personas/{id}`, `GET /api/personas/{id}/versions`, `POST /api/personas/draft` (preview only, no write), `POST /api/personas/{id}/revert`, `DELETE /api/personas/{id}`, `GET/PUT /api/personas/default`, `PUT /api/conversations/{id}/persona`. 400 titles never echo values; 404 for another user's id; bodies are not logged.
+
+**Data:** migration 5 adds `Personas`, `PersonaVersions`, `UserPersonaSettings`, and `Conversations.PersonaId`; migrations 1–4 unchanged. Plain SQLite (ADR 0002), not EF Core.
+
+**Work breakdown (one owner per file):** MIRA Security and MIRA Reviewer review this plan first, in parallel. Chunk 0 (contracts) starts only after they report no open Blocker or Major. Then A and B run in parallel. Details and file lists: `docs/M4_PERSONAS.md` §7.
+
+| Step | Owner | Depends on |
+|---|---|---|
+| Plan (this doc) | MIRA Boss | owner 23:39 MST |
+| Security: plan threat model | MIRA Security | Plan |
+| Plan review | MIRA Reviewer | Plan |
+| 0. Contracts | MIRA Boss | plan reviews, no open Blocker/Major |
+| A. Backend | MIRA Backend | 0, threat model |
+| B. Frontend | MIRA Frontend | 0, threat model |
+| C. Integration | MIRA Boss | A, B |
+| Review of the implementation | MIRA Reviewer + MIRA Security | C |
+
+**Test plan:** contract, store, API, chat/mock, and Vitest as in `docs/M4_PERSONAS.md` §9; whole suite twice; owner's Windows manual pass (Jack persona, default vs this-chat, revert, inspector shows no body).
+
+**Security/privacy notes:** owner from the principal only; parameterized, owner-scoped SQL; persona Markdown is private (not in the inspector, logs, or pipeline events); treated as untrusted instruction text (prompt injection must not write files, change governance, or grant tools); default-deny `GovernanceService` unchanged; draft endpoint has no side effects and no outbound provider call; no new dependency, paid service or network call; UI uses `textContent` / form values only.
+
+**Decisions needed from the owner:** none for M4 scope (all six defaults confirmed). The M3 Windows manual pass remains an open owner item.
+
+**Next turn:** MIRA Security (Security reviewer), threat-model this plan and append a `SECURITY REVIEW`; and MIRA Reviewer (Reviewer), review the plan and append a `REVIEW`. Implementation does not start while either has an open Blocker or Major.
+
+## 2026-11-17 23:43 MST | MIRA Security (pasted by MIRA Boss) | SECURITY REVIEW
+
+**Objective:** Threat-model the M4 plan (personas), `docs/M4_PERSONAS.md` at local commit `c2f39d7` (on `origin/main` `2c6751b`), before chunk 0 starts, as MIRA Boss asked. I only read files and wrote no repo file; MIRA Boss pastes this entry.
+
+**Verdict: PASS for the plan. No Blocker or Major.** The design is sound: governance stays in code and is never consulted "by prompt", the owner comes only from the principal, cross-user ids get 404, nothing renders as HTML, the inspector shows only id, name and version, and the drafter is deterministic with no writes. Personas are owner-only, so injected persona text reaches only its own author's chats. Five Minors should be frozen into chunk 0 and the A/B briefs.
+
+**Findings:**
+- [Minor 1] **Version-level IDOR.** `PersonaVersions` has no owner column (plan §4), so `GET /api/personas/{id}/versions`, `?version=`, `POST .../revert` and the turn-time body lookup are safe only if every query joins `Personas` and filters on `OwnerUserId = $owner` (or `OwnerUserId IS NULL` for read-only built-in access). **Fix:** say so in the chunk A brief and the `IPersonaStore` contract (each method takes `owner` and does the scoping itself). Add tests for Bob reading Alice's version list, a specific version, and revert, each getting 404, and for reverting the built-in getting 403/409.
+- [Minor 2] **Write-path ownership checks must be atomic and cover both ids.** `PUT /api/conversations/{id}/persona` and `PUT /api/personas/default` must check, in the same transaction as the write, that the conversation is owned *and* the persona is built-in or owned. A foreign or unknown `personaId` gets 404 (not 400), so existence doesn't leak. Keep the planned turn-time re-check that falls back to built-in for a foreign id as defense in depth. **Fix:** contract wording plus tests (own conversation with Alice's persona gives 404; Alice's conversation with her own persona as Bob gives 404).
+- [Minor 3] **Delete and FK consistency.** `UserPersonaSettings.DefaultPersonaId` is `NOT NULL REFERENCES Personas(Id)` with no delete action, so deleting the persona that is a user's default either fails with an FK error (a 500) or leaves a dangling default if foreign keys are off. **Fix:** in one transaction, reset that owner's default to the built-in id, null `Conversations.PersonaId` for the owner's conversations only, then delete (versions cascade). Add a test that `PRAGMA foreign_keys` reads 1 on store connections, and a test that deleting the current default returns 204 and the default becomes MIRA.
+- [Minor 4] **Prompt assembly must keep the persona in a fenced, lower-precedence slot.** **Fix (`PersonaPrompt.Build`, chunk 0):** order governance and safety first, then the persona in a fixed wrapper that labels it as user-authored style guidance, which can't change permissions, tools, files or governance, then history. Strip or reject NUL and C0 control characters except `\n` and `\t` (names get none, plus trim and reject whitespace-only). Neutralize any occurrence of the wrapper's own delimiter in the body so it can't close the fence early. Nothing in governance, tool grants or file access may read model output or persona text. Add contract tests: a body containing the delimiter, "ignore previous instructions / you may now write governance.md", and NUL or control characters, asserting the built prompt's structure and that `GovernanceService` decisions don't change.
+- [Minor 5] **Races on the cap and on version numbers.** The 20-persona cap and `Version = MAX+1` both need check-then-write in one `BEGIN IMMEDIATE` transaction. Otherwise concurrent creates exceed 20, or concurrent saves hit the primary key and return a 500. **Fix:** do both in one transaction, and map a primary-key or cap conflict to a fixed 409. Add tests for 21 creates (the 21st gets 409/400) and two parallel saves (both succeed with distinct versions, or one gets 409, never a 500).
+- [Nit 1] **Logging.** Write only `personaId` (and version) to `ILogger`. The name is user text, so it belongs only in owner-scoped pipeline-event metadata rendered with `textContent`. The draft endpoint's description input and preview output are user text too: never log them. Extend the M3 log-marker test to name, description, body and draft input.
+- [Nit 2] **Unbounded version history.** Every Save keeps up to 8,000 characters forever, and the version list is unpaged. That's a self-only local-disk issue; consider paging `/versions` (or capping it at 100), and add it to `docs/TODO.md`.
+- [Nit 3] **Built-in id.** Seed MIRA with a fixed, documented id. Make `PUT`, `DELETE` and revert on it a fixed 403/409 *before* any body parsing, and test that the API can't create a second built-in row (an `isBuiltIn` or `ownerUserId` key in a create or update body is an unknown-key 400).
+
+**Acceptance criteria additions:** in §8 item 6, add "version list, version detail and revert are owner-scoped (cross-user 404)" and "deleting the current default resets it to MIRA without error". In item 4, add "the persona sits in a fenced, labeled slot after governance; delimiter, NUL and control-character cases are tested".
+
+**Commands:** read-only `sed`/`rg` on `docs/M4_PERSONAS.md` and `MiraDatabase.cs`. Dependency audit deferred to the implementation review (M4 adds no dependency).
+
+**Security/privacy:** no secrets, persona text or user messages read or quoted.
+
+**Next turn:** MIRA Boss (Implementer lead). No open Blocker or Major from MIRA Security, so chunk 0 may start once MIRA Reviewer's plan review is also clear; fold in Minors 1-5.
+
+## 2026-11-17 23:42 MST | MIRA Reviewer | REVIEW
+
+**Objective:** Plan review of M4 (personas): `docs/M4_PERSONAS.md` in local commit `c2f39d7` (unpushed, on `origin/main` `2c6751b`; `git show --stat`: REVIEW.md, docs/M4_PERSONAS.md +207, docs/STT3_HANDOFF.md, docs/TODO.md). Checked against the 23:39 INTENT, the Turn line (it names MIRA Security and MIRA Reviewer jointly, which is correct), AGENTS.md (new rule: deferred items go in `docs/TODO.md`), and `docs/TODO.md`. This is a plan-only review: no code or tests were run. MIRA Security owns the threat model, so this entry covers correctness and privacy gaps only.
+
+**Verdict:** CHANGES REQUESTED. There are 2 Majors, both in delete/default semantics, and both cheap to fix in the doc before chunk 0. The scope, limits, API surface, chunk ordering, ADR 0002 storage, and AGENTS.md constraints match the owner's six decisions.
+
+### Findings
+
+**Major 1: `PersonaId` NULL means "follow the current default", which breaks owner decision 2.** In decision 2 (§Owner decisions l.10, §1 l.22), a new chat *copies* the default, and changing the default "does not rewrite existing chats". But §4 l.102 leaves pre-M4 conversations NULL ("resolve to the owner's default … at read/turn time"). §3 l.67 also sets conversations to NULL when their persona is deleted, and chunk A says the same. As a result, every pre-M4 chat and every chat whose persona was deleted silently changes persona whenever the user changes their default. That is the rewrite the owner ruled out.
+*Fix (pick one, write it in §4/§3):*
+- (a) Migration 5 backfills `Conversations.PersonaId` with the built-in MIRA id. Persona delete retargets affected conversations to a concrete id: built-in MIRA, or the default *at delete time*. NULL then never occurs, or is only a defensive fallback.
+- (b) Keep NULL = "follow default" as a deliberate rule and get the owner to confirm it, since it changes decision 2.
+
+Also state that `POST /api/conversations` *and* the M1 `POST /api/chat/stream` path without a `conversationId` (get-or-create) both copy the default. Today the plan only says "set on create".
+
+**Major 2: deleting the persona that is the user's default isn't specified, and under the planned schema it fails.** `UserPersonaSettings.DefaultPersonaId` is `NOT NULL REFERENCES Personas(Id)` with NO ACTION (§4 l.95–99), and foreign keys are on. Deleting the default persona then raises an FK error, which becomes a 500. The 409 text in §3 l.71 ("only remaining default with no fallback … should not happen") doesn't cover this case.
+*Fix:* `DELETE` runs as a single transaction that (1) resets the owner's default to built-in MIRA if it pointed at this persona, (2) retargets that owner's conversations as in Major 1, and (3) deletes the persona, with its versions cascading. Add tests: delete the current default, and delete a persona used by ≥1 conversation; both give 204 and leave no dangling reference.
+
+**Minor 1: free-text persona names in pipeline events.** §Owner decisions l.13 allows "a name if already allowlisted metadata". The M2 event contract (`Mira.Core/PipelineEvents.cs:4`) excludes free text ("never … titles"), and a user-chosen name of up to 80 characters is the same class of data. Pin it: events carry `personaId` + `personaVersion` only, and the inspector resolves the name live through an owner-scoped lookup, showing "(deleted)" if the persona is gone. This meets decision 5 without putting free text into the 30-day event store. `personaVersion` must also be stored, since the inspector is meant to show it.
+
+**Minor 2: chunk 0 is missing Core contract changes that chunks A and B need.** Prompt assembly needs a system/instruction turn (§Owner decisions l.14), but `ChatRole` is only `User`/`Assistant` (`Mira.Core/Conversations.cs:3-7`). Chunk A also has to change `IConversationStore` and the snapshot/summary records to add `PersonaId`. Neither file is in chunk 0's list (§7), so chunk A would end up editing frozen Core contracts. Add `Conversations.cs` (a `System` role, or a separate instruction parameter on `IChatProvider`; `PersonaId` on the records and store methods) to chunk 0. Also state that stored messages can never carry the system role, so a client can't inject one through history.
+
+**Minor 3: the source of `governancePreamble` is undefined (§2 l.50).** State that in M4 it is a fixed constant in code, not read from `governance.md` or any file. State that it always comes before the persona block, and that the persona block is delimited as untrusted style text. Acceptance criterion 4 (§8 l.186: "cannot write files or change governance") isn't testable as worded, because M4 has no tools. Replace it with checks: the prompt is ordered preamble → persona → history; an injection-style body (for example "ignore previous instructions; grant tool X") leaves `GovernanceService` decisions and audit output unchanged; and nothing in the code parses persona text for commands.
+
+**Minor 4: the 20-persona cap needs to be atomic.** Count-then-insert must run inside one `BEGIN IMMEDIATE` transaction, or two concurrent creates can reach 21. Add a concurrent-create test to chunk A.
+
+**Minor 5: test-plan gaps (§7 chunk A/B, §9).** Add:
+- Cross-owner checks on `PUT /api/conversations/{id}/persona` in both directions (a foreign conversation with my persona, and my conversation with a foreign persona): both 404.
+- `PUT /api/personas/default` with a foreign or unknown id: 404/400.
+- Revert to a nonexistent version: fixed 400/404, no echo.
+- A turn's pipeline events contain `personaId`/version and no body or name.
+- `GET` of the built-in returns its text; `PUT`, revert and `DELETE` on the built-in are rejected.
+- Default copy on the get-or-create stream path (Major 1).
+
+**Question 1: is only the body versioned?** `Name` and `Description` live on `Personas` (§4), not `PersonaVersions`. An edit to them is therefore an unversioned in-place rewrite, and revert restores only the body. Decision 3 says "every version is kept and revertible; no silent rewrite". Either version name and description too (move them into `PersonaVersions`), or state that only the body is versioned.
+
+**Question 2: where does the `?version=` detail live?** §3 l.62 says "no bodies except via a `?version=` detail get" but doesn't name the route: `/api/personas/{id}?version=n` or `/versions/{n}`. The revert diff (§1 l.24) needs it, so name the route and its 404 rule. Also constrain `{id}` (`{id:guid}`) so `default` and `draft` can never bind as ids.
+
+**Checked, OK:**
+- Migration 5 is append-only, plain SQL, and leaves 1–4 untouched. `ALTER TABLE … ADD COLUMN … REFERENCES` with a NULL default is valid SQLite. The built-in is seeded in the same migration. Tests cover upgrading a v4 database and idempotency.
+- The `CHECK` limits match decision 4. `PersonaVersions` cascades on persona delete.
+- The API sits in the existing `/api` group (auth, CSRF, loopback, owner from the principal). Its 400/404/403/401 shapes are consistent with M3.
+- The draft endpoint has no side effects and is Mock-only.
+- The frontend uses `textContent` only and has no Markdown→HTML.
+- No new dependency or paid service; vanilla TS/Astro; Windows CMD unchanged.
+- The chunk order (0 → A ∥ B → C) is sound, and each file has one owner.
+
+### Deferred items (for `docs/TODO.md`)
+- [ ] **Persona version retention/cap** · Owner + MIRA Backend · REVIEW 2026-11-17 23:42 (this entry); `M4_PERSONAS.md` §4 · cheap · Every save keeps an 8,000-char row with no limit (20 personas × unbounded versions); decide on a per-persona cap or pruning, and whether "Delete" should also be offered as "forget old versions".
+- [ ] **Safe Markdown preview (if ever added)** · Implementer + MIRA Security · `M4_PERSONAS.md` §5, §6 · medium · M4 shows raw text only; any rendered preview needs a sanitizer with no new dependency, or a threat model, before it ships.
+- (User-delete cleanup for personas is already covered by the existing "User-delete cleanup" item.)
+
+### Security/privacy
+- Persona bodies, and the names and descriptions, stay out of events and logs (Minor 1). Pipeline-event retention (30 days) then holds only opaque ids and version numbers.
+- Old versions keep text the user may think they replaced. Revert depends on that, but the editor should say so, and deleting a persona removes all its versions (this already cascades).
+- Writes must use `OwnerUserId = $owner`, never `OR OwnerUserId IS NULL`, so the built-in can't be reached by a write path. Reads may include the built-in.
+- No duplication of MIRA Security's threat model is intended. NUL, control-character and Unicode handling (§6) is left to their review.
+
+### Decisions needed from the owner
+1. Major 1: chats follow a *frozen* persona (recommended (a): backfill and retarget to a concrete id), or NULL = "follow the current default" for pre-M4 and orphaned chats?
+2. Question 1: version name and description along with the body, or the body only?
+3. TODO item 1: cap or prune persona versions (for example keep the last 50), or keep all?
+
+**Next turn:** Grok team (MIRA Boss), to resolve Majors 1–2 in `docs/M4_PERSONAS.md` (and take the Minors or log them in `docs/TODO.md`) with the owner's answers above, then return it to MIRA Reviewer for a short re-check. Chunk 0 does not start while a Major is open, and MIRA Security's SECURITY REVIEW is also required. No push.
+
+## 2026-11-18 00:05 MST | MIRA Boss | RESOLUTION
+
+**Objective:** Revise `docs/M4_PERSONAS.md` to fold in MIRA Security's 23:43 SECURITY REVIEW and MIRA Reviewer's 23:42 REVIEW, record the owner's answers received directly by MIRA Boss at 00:05 MST, and put deferred items in `docs/TODO.md`. Acting on a direct owner instruction that overrides the Turn line.
+
+**Branch and commit:** local `main`, amending the unpushed docs commit `c2f39d7`. Not pushed.
+
+**Files examined or changed:**
+- `docs/M4_PERSONAS.md` — revised for the 00:05 answers and both reviews
+- `docs/TODO.md` — added Safe Markdown preview; did not add a version-cap item (owner (c) set the cap at 5)
+- `REVIEW.md` — this append (Security review, Reviewer review, this RESOLUTION)
+
+**Owner answers (received directly at 00:05 MST):**
+(a) Chats are pinned to a concrete persona. Backfill pre-M4 conversations to the built-in MIRA id in migration 5; NULL does not mean "follow the default". When a persona is deleted, stored messages stay unchanged and the UI shows a status like "Persona no longer exists". The conversation keeps its stored `PersonaId` as a soft pin (no FK cascade), so the UI can show that; there is no silent fallback. New turns in that chat use the built-in MIRA, and the UI says so. A persona is effectively a system/instruction message.
+(b) Version the name, description and body (move them into `PersonaVersions`); revert restores all three.
+(c) Keep at most 5 versions per persona, pruning the oldest on save. The limit is one code constant (`PersonaLimits.MaxVersionsPerPersona = 5`) so it can be raised later. This replaces "keep every version".
+
+**Finding-by-finding map:**
+- **Reviewer Major 1:** adopted (a) — pin + backfill to built-in MIRA; NULL no longer means follow-default. `POST /api/conversations` and the M1 get-or-create `POST /api/chat/stream` path both copy the default.
+- **Reviewer Major 2:** delete of the current default runs in one transaction and resets the default to built-in MIRA (avoids a 500). Conversations are *not* retargeted or nulled (owner (a) overrules retarget / Security Minor 3's "null PersonaId"). Tests: delete the current default (204, default becomes MIRA); delete a persona used by ≥1 conversation (pins kept, messages intact).
+- **Reviewer Minor 1 / event pinning:** pipeline events carry `personaId` + `personaVersion` only; the inspector resolves the name live or shows `(deleted)`.
+- **Reviewer Minor 2:** chunk 0 now includes `Conversations.cs` (instruction/system channel on `ChatRequest`; stored messages can never carry the system role; `PersonaId` on records and store methods) and `PipelineEvents.cs` (`PersonaId`, `PersonaVersion`).
+- **Reviewer Minor 3:** `governancePreamble` is a fixed code constant (`PersonaPrompt.GovernancePreamble`). Prompt order and injection tests as specified; acceptance §8 item 4 is now testable.
+- **Reviewer Minor 4 + Security Minor 5:** count-then-insert and `Version = MAX+1` run inside one `BEGIN IMMEDIATE` transaction; primary-key or cap conflict maps to a fixed 409; concurrent-create and parallel-save tests added.
+- **Reviewer Minor 5:** all listed test-plan gaps added (cross-owner assignment both directions; default with a foreign/unknown id is 404; revert of a missing version; events have id/version and no body/name; built-in GET vs PUT/revert/DELETE; default copy on get-or-create).
+- **Reviewer Q1 / owner (b):** name, description and body all live in `PersonaVersions`; revert restores all three.
+- **Reviewer Q2:** the version detail route is `GET /api/personas/{id:guid}/versions/{version:int}`; `{id:guid}` is required on all persona-id routes so `default` and `draft` never bind as ids.
+- **Reviewer deferred:** Safe Markdown preview added to `docs/TODO.md`. The unbounded-version-retention TODO is *not* added: owner (c) set `MaxVersionsPerPersona = 5` and prune-oldest-on-save.
+- **Security Minor 1:** version queries join `Personas` and filter `OwnerUserId = $owner` (or `IS NULL` for built-in reads); store methods take `owner`; cross-user version/revert tests are 404; revert of the built-in is 403/409.
+- **Security Minor 2:** ownership checks sit inside the same write transaction for conversation persona and default; foreign or unknown ids are 404; tests cover both directions.
+- **Security Minor 3:** the default is reset before delete; conversation `PersonaId` is *not* nulled (owner (a)); `PRAGMA foreign_keys = 1` is tested; delete-default returns 204 and the default becomes MIRA.
+- **Security Minor 4:** fenced persona slot after the governance preamble; delimiter neutralization; C0/NUL stripping; contract tests as specified.
+- **Security Nit 1:** log only `personaId` (and version); extend the M3 log-marker tests; never log name, description, body, or draft input/output.
+- **Security Nit 2:** addressed by the 5-version cap (not paging or an open TODO); `/versions` returns at most 5, newest first.
+- **Security Nit 3:** built-in id is the fixed, documented `PersonaIds.BuiltInMira` = `00000000-0000-0000-0000-000000000001`; `PUT`/`DELETE`/revert return 403/409 before body parsing; a second built-in cannot be created; `isBuiltIn` or `ownerUserId` on create/update is an unknown-key 400.
+- **Security §8 additions:** folded into items 4 and 6 (fenced slot + delimiter/NUL/C0 tests; version list/detail/revert owner-scoped; delete default resets to MIRA).
+- **Writes:** never use `OR OwnerUserId IS NULL` (Reviewer security note).
+
+**Commands run and results:** plan, TODO and REVIEW edited on the box; unpushed commit `c2f39d7` amended locally (message and MIRA Boss trailer kept; Reviewer and Security trailers added). Not pushed.
+
+**Security/privacy concerns:** none. Reviews are pasted verbatim; no persona text, secrets or user messages are quoted.
+
+**Decisions needed from the owner:** none for this plan revision. The M3 Windows manual pass remains an open owner item.
+
+**Next turn:** MIRA Reviewer (Reviewer), short re-check of the plan.
+
+## 2026-11-18 00:10 MST | MIRA Reviewer | VERIFICATION
+
+**Objective:** Short re-check of the revised M4 plan (`docs/M4_PERSONAS.md` at local commit `a2824ac`, unpushed) against the 2026-11-17 23:42 REVIEW and the owner's 00:05 MST answers (received by MIRA Boss).
+
+**Result: PASS. Majors 1 and 2 are CLOSED. No Blocker or Major is open.**
+- **Major 1 closed:** §1 decision 2 pins chats to a concrete id. Both `POST /api/conversations` and the `chat/stream` get-or-create path copy the default, and the plan states that `PersonaId` is never "follow the default". In §4, migration 5 adds `PersonaId TEXT NOT NULL DEFAULT` set to the built-in MIRA id, plus an explicit `UPDATE` backfill. The plan intentionally adds no foreign key (a soft pin), so deleting a persona leaves the pin in place. The chat shows "Persona no longer exists", and new turns use MIRA. This matches the owner's 00:05 answer.
+- **Major 2 closed:** In §6, delete consistency resets the owner's default to MIRA before the delete, and versions cascade. §3 returns 204 instead of an FK error, and acceptance criterion 6 covers deleting the current default.
+- **Minors and Questions:** all addressed in the plan:
+  - Events carry the id and version only.
+  - `Conversations.cs` and `PipelineEvents.cs` are in chunk 0, with no stored system role.
+  - The cap and version checks run under `BEGIN IMMEDIATE`.
+  - Routes use `{id:guid}`, and the version-detail route is named.
+  - Name, description and body are versioned, capped at 5.
+
+**Non-blocking, for chunk A:**
+- Run the delete steps (reset the default, then delete) in one `BEGIN IMMEDIATE` transaction, as §6 implies.
+- Add a test that a dangling pin resolves to MIRA at turn time without rewriting the stored pin, and that the conversation reports `personaStatus: deleted`.
+
+**Security/privacy:** None new.
+
+**Next turn:** Grok team (MIRA Boss). Chunk 0 may start. No push without the owner's direct approval.

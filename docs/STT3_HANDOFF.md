@@ -440,6 +440,8 @@ Production/user-specific `whoami.md`, secrets, logs containing private text, aud
 
 ## 10. Implementation milestones and acceptance criteria
 
+> **MIRA numbering (owner decision, 2026-11-17 23:39 MST):** After account settings shipped as M3, the owner confirmed that MIRA renumbered the later milestones. In MIRA's numbering, personas is **M4**, memory **M5**, STT **M6**, TTS **M7**, Tavily **M8**, and hardening **M9**. The permissioned-agent foundation stays a gated follow-on. The subsection titles below are the original handoff names (for example "### M3: Persona system") and are left unchanged as history; use the MIRA numbers in new work. Plan: [`docs/M4_PERSONAS.md`](M4_PERSONAS.md).
+
 ### M0: Repository and safety baseline
 
 **Build:** solution layout, `.gitignore`, config loader, health endpoint, unit test project, `AGENTS.md`, `REVIEW.md`, local run scripts, initial security requirements.
