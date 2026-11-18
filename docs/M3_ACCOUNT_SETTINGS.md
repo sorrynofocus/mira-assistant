@@ -10,7 +10,7 @@ Constraints (AGENTS.md): Astro static + vanilla TypeScript, no new dependencies 
 |---|---|
 | Account area | Lower-left corner of the chat workspace (bottom of the conversation sidebar): avatar with the username's first letter, the username, and a gear button. Replaces "Signed in as …" in the top bar. |
 | Settings | The gear opens an accessible modal Settings dialog. |
-| Themes | `mira-dark` = **MIRA Dark** (today's look, the default); `sovereign` = **Sovereign** (black-and-white, high-contrast, flat; inspired by a black/white aesthetic, no logos or trademarks); `system` = **Match system** (follows the OS `prefers-color-scheme`: dark → MIRA Dark, light → Sovereign; updates live when the OS setting changes). |
+| Themes | `mira-dark` = **MIRA Dark** (today's look, the default); `sovereign` = **Sovereign** (black-and-white, high-contrast, flat; inspired by a black/white aesthetic, no logos or trademarks; exception: the API status dot is green when online, using the MIRA Dark `--ok` green `#76d7a5` — owner decision, 2026-11-17 22:34 MST); `system` = **Match system** (follows the OS `prefers-color-scheme`: dark → MIRA Dark, light → Sovereign; updates live when the OS setting changes). |
 | M3 settings | Theme, font size (`small` / `default` / `large`), inspector open by default (boolean), and Sign out (moved into the dialog). More settings later. |
 | API path | `/api/me/preferences`: un-versioned, under the existing `/api` group, like `/api/auth/me`, `/api/conversations` and `/api/diagnostics` (MIRA Boss decision). |
 | Security | MIRA Security threat-models this plan before chunks A and B start and security-reviews the code after chunk C, alongside MIRA Reviewer (section 6). |
@@ -103,7 +103,7 @@ Untouched by M3: auth, sessions, conversations, diagnostics, chat endpoints and 
 
 1. The lower-left account area shows the initial, username and gear; it is keyboard reachable and named for screen readers.
 2. The gear opens a modal Settings dialog: focus starts inside, Tab is trapped, Esc and Close dismiss it, focus returns to the gear.
-3. Theme, font size and inspector default apply at once; MIRA Dark looks exactly as today; Sovereign is black and white with no trademarks; Match system follows the OS and updates live.
+3. Theme, font size and inspector default apply at once; MIRA Dark looks exactly as today; Sovereign is black and white with no trademarks, except the API status dot is green when online (owner decision, 2026-11-17 22:34 MST); Match system follows the OS and updates live.
 4. Choices persist per user across reload, restart and sign-out/in; another user's preferences are unaffected.
 5. No flash of the wrong theme or font size on reload.
 6. The API follows section 3: allowlists enforced, 400 rules, CSRF on `PUT`, 401 when signed out, no user ID accepted from the client, values not logged. Invalid JSON, an empty body and a non-JSON content type return a fixed 400/415 with no request content; unknown key names are not echoed.
@@ -128,7 +128,7 @@ Untouched by M3: auth, sessions, conversations, diagnostics, chat endpoints and 
 
 - **As built:** matches sections 2–6. Migration 4 adds the optional hardening from section 9 (`WITHOUT ROWID`, length `CHECK`s). `PUT` reads the body itself: non-JSON `Content-Type` → 415, invalid JSON or empty body → 400, and (integration fix) a body over Kestrel's 256 KB limit → fixed 413 `The request body is too large.` instead of the Development exception page. All 400/413/415 bodies are fixed titles, identical in Development and Production.
 - **Frontend deviations (accepted):** the charset, viewport and theme-color metas come before `<script src="/theme-init.js">` (still the first script, ahead of the stylesheet); sign-out clears `ConversationWorkspace`'s public fields directly.
-- **MIRA Boss decisions:** the pre-existing MIRA Dark contrast gaps (some muted, warning and error text on the selected item; focus ring against the accent; input and panel borders; hover) are **accepted for M3** to keep MIRA Dark pixel-identical, and go to the backlog. The **Show inspector** toggle doesn't write the preference by design: the Settings checkbox is the default, the toggle is per session.
+- **MIRA Boss decisions:** the pre-existing MIRA Dark contrast gaps (some muted, warning and error text on the selected item; focus ring against the accent; input and panel borders; hover) are **accepted for M3** to keep MIRA Dark pixel-identical, and go to the backlog. The **Show inspector** toggle doesn't write the preference by design: the Settings checkbox is the default, the toggle is per session. Owner decision 2026-11-17 22:34 MST: in Sovereign, the API status dot uses the MIRA Dark `--ok` green `#76d7a5` when online; the offline ring and the rest of the theme stay monochrome.
 - **Overlapping saves (Reviewer Minor 2):** `SettingsController.change` serializes `PUT`s and applies only the latest change's outcome; a failed latest save reverts to the last server-confirmed state.
 - **Verification:** see the REVIEW.md chunk C IMPLEMENTATION entry (full clean run and curl smoke test) and the 08:50 RESOLUTION.
 

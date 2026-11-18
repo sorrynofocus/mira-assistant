@@ -72,7 +72,7 @@ What each line does:
 | `npm --prefix frontend ci` | Installs the frontend's packages (Astro, Vitest, TypeScript) into `frontend\node_modules`. `--prefix frontend` runs npm in the `frontend` folder; `ci` is a clean install of the exact versions in `frontend\package-lock.json`. It ends with an install summary. A "vulnerabilities" or "funding" notice there is information, not an error. |
 | `scripts\test.cmd` | Builds the C# backend, runs the backend tests (xUnit) and frontend tests (Vitest), type-checks the frontend and builds the site. It stops at the first failure; success ends with `All checks passed.` |
 | `scripts\create-user.cmd <your-name>` | Creates your local sign-in account in the SQLite database (`%LOCALAPPDATA%\MIRA\mira.db`). It asks for your password twice; nothing is echoed while you type. There are no default accounts. |
-| `scripts\dev.cmd` | Starts MIRA: it opens two windows, one for the API (`http://127.0.0.1:5080`) and one for the web page (`http://127.0.0.1:4321`). Close both windows to stop. |
+| `scripts\dev.cmd` | Starts MIRA in one window: the API (`http://127.0.0.1:5080`) in the background and the web page (`http://127.0.0.1:4321`) in the foreground. Press Ctrl+C to stop. If the API is still running, the script prints how to end it, or close the window. |
 
 You only need `git clone`, `npm --prefix frontend ci` and `create-user` once. After that, `scripts\dev.cmd` is all it takes to run MIRA. Rerun `npm --prefix frontend ci` when `frontend\package-lock.json` changes.
 
@@ -180,7 +180,7 @@ It prompts for `Password:` and `Confirm password:`; nothing is echoed. If the tw
 - **Where it is stored:** `%LOCALAPPDATA%\MIRA\mira.db` by default, outside the repository. Set `Mira:DatabasePath` to use another file (see [Configuration](#configuration)). The API and `create-user` must use the same path.
 - **Scripted use:** when standard input is redirected, the command reads one line from it as UTF-8 instead of prompting (`--password-stdin` forces this when calling the API project directly). CMD's `echo` does not send non-ASCII characters as UTF-8 and leaves the password in your command history, so prefer the interactive prompt.
 
-`create-user.cmd` runs `dotnet run` on the API project, which builds it first. Run it from the repository root; if the build reports that a file is in use, stop the **MIRA API** window and try again.
+`create-user.cmd` runs `dotnet run` on the API project, which builds it first. Run it from the repository root; if the build reports that a file is in use, stop the running API (Ctrl+C in the `dev.cmd` window, or end the process listening on port 5080) and try again.
 
 ### 6. Run
 
@@ -188,10 +188,10 @@ It prompts for `Password:` and `Confirm password:`; nothing is echoed. If the tw
 scripts\dev.cmd
 ```
 
-This opens two new CMD windows and prints the two addresses:
+This starts both pieces in the current CMD window and prints the two addresses:
 
-- **MIRA API**: the backend at `http://127.0.0.1:5080` (health check at `http://127.0.0.1:5080/health/live`).
-- **MIRA Frontend**: the Astro dev server at `http://127.0.0.1:4321/`. It forwards (proxies) `/api` and `/health` requests to the API, so the page and the API appear to the browser as one site. This is what keeps the strict session cookie and CSRF checks working.
+- **MIRA API**: the backend at `http://127.0.0.1:5080` (health check at `http://127.0.0.1:5080/health/live`), started in the background in this window.
+- **MIRA Frontend**: the Astro dev server at `http://127.0.0.1:4321/`, running in the foreground. It forwards (proxies) `/api` and `/health` requests to the API, so the page and the API appear to the browser as one site. This is what keeps the strict session cookie and CSRF checks working. The script sets `NPM_CONFIG_UPDATE_NOTIFIER=false` so npm's update notice does not pause the start.
 
 Open <http://127.0.0.1:4321/>. The header shows **API online** when the backend responds, or **API unavailable** if it does not; use **Check again** after the API finishes starting.
 
@@ -202,7 +202,7 @@ The page shows a **Sign in** form. After you sign in it shows the chat:
 - Responses come from a mock model that echoes your message. No paid API is called.
 - **Your account** is in the lower-left corner: your initial, your username and a **gear** button that opens **Settings** (a dialog you can use with the keyboard; **Esc** closes it).
 - **Settings** (saved per user on the server):
-  - **Theme:** **MIRA Dark** (the default), **Sovereign** (black and white, high contrast) or **Match system** (follows your OS light/dark setting: dark gives MIRA Dark, light gives Sovereign, and it switches live).
+  - **Theme:** **MIRA Dark** (the default), **Sovereign** (black and white, high contrast; the API status dot is green when online) or **Match system** (follows your OS light/dark setting: dark gives MIRA Dark, light gives Sovereign, and it switches live).
   - **Font size:** small, default or large.
   - **Open the inspector by default:** whether the inspector panel opens when you sign in. The **Show inspector** button still toggles it for the current session without changing this setting.
   - The page remembers your theme and font size in the browser, so it opens in the right look without a flash. Nothing else is cached.
@@ -216,11 +216,11 @@ curl http://127.0.0.1:5080/health/live
 
 Expected output: `{"status":"ok"}`
 
-To stop, press `Ctrl+C` in each of the two windows, or close them.
+To stop, press `Ctrl+C` in this window. That stops the frontend, and may also stop the API because both share the console. If the API is still listening on port 5080, the script tries to stop it when the frontend exits; if you answered Y to "Terminate batch job?" and the API is still running, end it with the `taskkill` command the script printed, or close the window.
 
 ### 7. Run the pieces manually (optional)
 
-These are the same commands `scripts\dev.cmd` runs. Use two CMD windows, both starting at the repository root.
+You can also start the two pieces yourself in two CMD windows, both starting at the repository root. `scripts\dev.cmd` runs the same commands in one window.
 
 API:
 
@@ -289,7 +289,7 @@ Limits:
 | `npm ci` or `astro` reports an unsupported Node.js version (`EBADENGINE`, or `Node.js vX is not supported by Astro!`) | Install Node.js 22.23.4 or newer (for example `winget upgrade --id OpenJS.NodeJS.22 -e`), open a new window, and confirm with `node --version`. |
 | `npm ci` ends with `N moderate severity vulnerabilities` | Not an error; the install succeeded. Run `npm --prefix frontend audit` to see the details. Updating dependencies changes `package-lock.json`, so it goes through the normal implement-and-review cycle. |
 | `scripts\dev.cmd` prints `Install frontend dependencies with: npm --prefix frontend ci` | Run `npm --prefix frontend ci` from the repository root, then run `scripts\dev.cmd` again. |
-| Page says **API unavailable**, or the sign-in form says `MIRA is unreachable. Start the API, then reload this page.` | Check that the **MIRA API** window is open and has finished starting (no error shown), then press **Check again** or reload. Confirm with `curl http://127.0.0.1:5080/health/live`. |
+| Page says **API unavailable**, or the sign-in form says `MIRA is unreachable. Start the API, then reload this page.` | Check that the API has finished starting in the `dev.cmd` window (no error shown), then press **Check again** or reload. Confirm with `curl http://127.0.0.1:5080/health/live`. |
 | Sign-in says `Invalid username or password.` | The username or password is wrong, or the account is disabled. The message is the same in every case by design, so it does not reveal which accounts exist. Check that you created the account (`scripts\create-user.cmd`) against the same database the API uses. |
 | Sign-in says `Too many failed attempts. Try again later.` (HTTP 429) | That username had 5 failed sign-ins (default) within 15 minutes and is locked out, even with the right password, until the window passes. The counter is kept in memory, so restarting the API also clears it. `Too many sign-in attempts. Wait a minute and try again.` means the per-IP limit of 20 sign-in requests per minute was hit; wait a minute. |
 | `Your session ended. Sign in again.` | Sessions end after 30 minutes without activity or 12 hours after sign-in (defaults), on sign-out, or if the account is disabled. Sign in again. |
