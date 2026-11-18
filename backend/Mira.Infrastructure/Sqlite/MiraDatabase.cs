@@ -88,6 +88,57 @@ public sealed class MiraDatabase
                 UpdatedAt TEXT NOT NULL,
                 PRIMARY KEY (OwnerUserId, Key)
             ) WITHOUT ROWID;
+            """),
+        // M4: personas. Name, description and body live in PersonaVersions (at most PersonaLimits.MaxVersionsPerPersona kept).
+        // Conversations.PersonaId is a soft pin: no REFERENCES, so deleting a persona leaves the pin in place (UI: "deleted").
+        // The built-in MIRA row (OwnerUserId NULL, fixed id PersonaIds.BuiltInMira) is seeded here. Its text must match
+        // BuiltInPersona.Markdown (tested); a later wording change needs a new migration, never an edit here.
+        (5, """
+            CREATE TABLE Personas (
+                Id TEXT NOT NULL PRIMARY KEY,
+                OwnerUserId TEXT NULL REFERENCES Users(Id),
+                ActiveVersion INTEGER NOT NULL,
+                CreatedAt TEXT NOT NULL,
+                UpdatedAt TEXT NOT NULL
+            );
+            CREATE INDEX IX_Personas_OwnerUserId ON Personas(OwnerUserId);
+
+            CREATE TABLE PersonaVersions (
+                PersonaId TEXT NOT NULL REFERENCES Personas(Id) ON DELETE CASCADE,
+                Version INTEGER NOT NULL,
+                Name TEXT NOT NULL CHECK (length(Name) BETWEEN 1 AND 80),
+                Description TEXT NULL CHECK (length(Description) <= 200),
+                Markdown TEXT NOT NULL CHECK (length(Markdown) BETWEEN 1 AND 8000),
+                CreatedAt TEXT NOT NULL,
+                PRIMARY KEY (PersonaId, Version)
+            );
+
+            CREATE TABLE UserPersonaSettings (
+                OwnerUserId TEXT NOT NULL PRIMARY KEY REFERENCES Users(Id),
+                DefaultPersonaId TEXT NOT NULL REFERENCES Personas(Id),
+                UpdatedAt TEXT NOT NULL
+            );
+
+            ALTER TABLE Conversations ADD COLUMN PersonaId TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001';
+            UPDATE Conversations SET PersonaId = '00000000-0000-0000-0000-000000000001';
+
+            INSERT INTO Personas (Id, OwnerUserId, ActiveVersion, CreatedAt, UpdatedAt)
+            VALUES ('00000000-0000-0000-0000-000000000001', NULL, 1, '2026-11-18T00:00:00.0000000Z', '2026-11-18T00:00:00.0000000Z');
+            INSERT INTO PersonaVersions (PersonaId, Version, Name, Description, Markdown, CreatedAt)
+            VALUES ('00000000-0000-0000-0000-000000000001', 1, 'MIRA', 'Helpful, candid and concise.',
+                    '# MIRA
+
+            ## Identity
+            You are MIRA (Memory, Intelligence, Reasoning and Autonomy), a local assistant.
+
+            ## Style
+            - Helpful, candid and concise.
+            - Say plainly when you do not know something.
+
+            ## Boundaries
+            - Never claim to have taken an action, called a tool or remembered something that did not happen.
+            - Do not invent memories, sources or facts.',
+                    '2026-11-18T00:00:00.0000000Z');
             """)
     ];
 

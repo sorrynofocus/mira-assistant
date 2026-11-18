@@ -131,10 +131,10 @@ public sealed class SqlitePreferenceStoreTests : PreferenceStoreContractTests
     [Fact]
     public async Task FreshDatabaseHasMigrationFourAndIsIdempotent()
     {
-        Assert.Equal(4, MiraDatabase.LatestVersion);
+        Assert.True(MiraDatabase.LatestVersion >= 4);
         await _database.MigrateAsync();
         await using var connection = await _database.OpenAsync();
-        Assert.Equal(4, await MiraDatabase.GetVersionAsync(connection));
+        Assert.Equal(MiraDatabase.LatestVersion, await MiraDatabase.GetVersionAsync(connection));
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'UserPreferences';";
         Assert.Equal(1L, await command.ExecuteScalarAsync());
@@ -149,16 +149,32 @@ public sealed class SqlitePreferenceStoreTests : PreferenceStoreContractTests
         var accounts = new SqliteUserAccountService(database, options, Time);
         var user = await accounts.CreateAsync("m2-owner", "an m2 era fixture password");
         var token = await new SqliteSessionStore(database, options, Time).CreateAsync(user.Id);
-        var conversations = new SqliteConversationStore(database, Time);
-        var conversation = await conversations.CreateAsync(user.Id, "kept");
-        await conversations.AppendUserMessageAsync(user.Id, conversation.Id, "synthetic", "r1");
+        // A version-3 row written with that era's columns (today's store also writes M4's PersonaId).
+        var conversationId = Guid.NewGuid();
+        await using (var connection = await database.OpenAsync())
+        await using (var insert = connection.CreateCommand())
+        {
+            insert.CommandText = """
+                INSERT INTO Conversations (Id, OwnerUserId, Title, CreatedAt, UpdatedAt) VALUES ($id, $owner, 'kept', $now, $now);
+                INSERT INTO Messages (Id, ConversationId, Role, Content, Status, CreatedAt, ModelId, RequestId)
+                VALUES ($messageId, $id, 'User', 'synthetic', 'Completed', $now, NULL, 'r1');
+                """;
+            insert.Parameters.AddWithValue("$id", conversationId.ToString());
+            insert.Parameters.AddWithValue("$owner", user.Id.ToString());
+            insert.Parameters.AddWithValue("$messageId", Guid.NewGuid().ToString());
+            insert.Parameters.AddWithValue("$now", Time.GetUtcNow().UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+            await insert.ExecuteNonQueryAsync();
+        }
 
         await database.MigrateAsync();
 
         await using (var connection = await database.OpenAsync())
         {
-            Assert.Equal(4, await MiraDatabase.GetVersionAsync(connection));
+            Assert.Equal(MiraDatabase.LatestVersion, await MiraDatabase.GetVersionAsync(connection));
         }
+
+        var conversations = new SqliteConversationStore(database, Time);
+        var conversation = new { Id = conversationId };
 
         Assert.NotNull(await accounts.VerifyCredentialsAsync("m2-owner", "an m2 era fixture password"));
         Assert.Equal(user.Id, await new SqliteSessionStore(database, options, Time).ValidateAsync(token));

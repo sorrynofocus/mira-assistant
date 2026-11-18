@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Mira.Api.Auth;
 using Mira.Api.Conversations;
 using Mira.Core;
+using Mira.Infrastructure;
 
 namespace Mira.Api.Chat;
 
@@ -18,11 +19,12 @@ public static class ChatEndpoints
 
     public static void MapChatEndpoints(this RouteGroupBuilder api)
     {
-        api.MapGet("/conversations/current", async (HttpContext http, IConversationStore conversations, CancellationToken cancellationToken) =>
+        api.MapGet("/conversations/current", async (HttpContext http, IConversationStore conversations, IPersonaStore personas, CancellationToken cancellationToken) =>
         {
-            // Same shape as GET /api/conversations/{id}.
-            var c = await conversations.GetMostRecentOrCreateAsync(CurrentUser.GetUserId(http.User), cancellationToken);
-            return Results.Ok(new ConversationResponse(c.Id, c.Title, c.CreatedAt, c.UpdatedAt, c.Messages));
+            // Same shape as GET /api/conversations/{id}. A conversation created here copies the owner's default persona.
+            var owner = CurrentUser.GetUserId(http.User);
+            var c = await conversations.GetMostRecentOrCreateAsync(owner, await personas.GetDefaultAsync(owner, cancellationToken), cancellationToken);
+            return Results.Ok(await ConversationResponse.FromAsync(c, personas, cancellationToken));
         });
 
         api.MapPost("/chat/stream", StreamAsync);
@@ -35,6 +37,7 @@ public static class ChatEndpoints
         ChatStreamRequest body,
         HttpContext http,
         IConversationStore conversations,
+        IPersonaStore personas,
         IChatProvider provider,
         IPipelineRecorder recorder,
         ActiveTurnRegistry turns,
@@ -56,17 +59,25 @@ public static class ChatEndpoints
         }
 
         var userId = CurrentUser.GetUserId(http.User);
-        Guid conversationId;
+        ConversationSnapshot conversation;
         if (body.ConversationId is { } requested)
         {
             // Missing and someone else's conversation look the same.
-            if (await conversations.GetAsync(userId, requested, http.RequestAborted) is null) return ConversationNotFound();
-            conversationId = requested;
+            if (await conversations.GetAsync(userId, requested, http.RequestAborted) is not { } found) return ConversationNotFound();
+            conversation = found;
         }
         else
         {
-            conversationId = (await conversations.GetMostRecentOrCreateAsync(userId, http.RequestAborted)).Id;
+            // M1 get-or-create path: a new conversation copies the owner's current default persona.
+            conversation = await conversations.GetMostRecentOrCreateAsync(
+                userId, await personas.GetDefaultAsync(userId, http.RequestAborted), http.RequestAborted);
         }
+
+        var conversationId = conversation.Id;
+
+        // Turn-time persona: the pinned persona's active version, or built-in MIRA if the pin's row is gone (the stored pin is
+        // not rewritten). Only its id and version are ever logged or recorded.
+        var persona = (await personas.ResolveForTurnAsync(userId, conversation.PersonaId, http.RequestAborted)).Persona;
 
         var turn = turns.TryBegin(userId, conversationId);
         if (turn is null)
@@ -93,7 +104,7 @@ public static class ChatEndpoints
                 return ConversationNotFound();
             }
 
-            var turnContext = new TurnContext(http, userId, conversationId, requestId, started, userMessage, assistant, prompt, message.Length);
+            var turnContext = new TurnContext(http, userId, conversationId, requestId, started, userMessage, assistant, prompt, message.Length, persona);
             await RunTurnAsync(turnContext, turn, conversations, provider, recorder, options, time, jsonOptions.Value.SerializerOptions,
                 loggerFactory.CreateLogger(typeof(ChatEndpoints)));
         }
@@ -107,7 +118,7 @@ public static class ChatEndpoints
 
     private sealed record TurnContext(
         HttpContext Http, Guid UserId, Guid ConversationId, string RequestId, long Started,
-        ConversationMessage UserMessage, ConversationMessage Assistant, IReadOnlyList<ChatTurn> Prompt, int InputChars);
+        ConversationMessage UserMessage, ConversationMessage Assistant, IReadOnlyList<ChatTurn> Prompt, int InputChars, PersonaDetail Persona);
 
     private static async Task RunTurnAsync(
         TurnContext ctx,
@@ -127,8 +138,10 @@ public static class ChatEndpoints
             recorder.RecordAsync(userId, requestId, conversationId, eventType, Elapsed(), data, CancellationToken.None);
 
         var (prompt, assistant) = (ctx.Prompt, ctx.Assistant);
+        var (personaId, personaVersion) = (ctx.Persona.Id, ctx.Persona.ActiveVersion);
         await Record(PipelineEventTypes.RequestStarted,
-            new PipelineEventData(ModelId: provider.ModelId, InputChars: ctx.InputChars, PromptTurns: prompt.Count));
+            new PipelineEventData(ModelId: provider.ModelId, InputChars: ctx.InputChars, PromptTurns: prompt.Count,
+                PersonaId: personaId, PersonaVersion: personaVersion));
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(aborted, turn.Token);
         linked.CancelAfter(TimeSpan.FromSeconds(options.Chat.MaxResponseSeconds));
@@ -141,7 +154,7 @@ public static class ChatEndpoints
         // The terminal pipeline event of every outcome carries the same allowlisted fields.
         PipelineEventData Terminal(MessageStatus status, string? errorCode = null) => new(
             ModelId: provider.ModelId, Status: status, OutputChars: text.Length, DeltaCount: deltaCount,
-            FirstTokenMs: firstTokenMs, TotalMs: Elapsed(), ErrorCode: errorCode);
+            FirstTokenMs: firstTokenMs, TotalMs: Elapsed(), ErrorCode: errorCode, PersonaId: personaId, PersonaVersion: personaVersion);
 
         // False when the conversation was deleted during the turn (permanent delete, owner decision 2026-11-16). The turn then
         // records no terminal pipeline event, so nothing of this request outlives the delete (the SQLite event store also drops
@@ -173,7 +186,12 @@ public static class ChatEndpoints
             await writer.WriteAsync("response.started",
                 new { messageId = assistant.Id, userMessageId = ctx.UserMessage.Id, model = provider.ModelId }, linked.Token);
 
-            await foreach (var delta in provider.StreamAsync(new ChatRequest(prompt), linked.Token).WithCancellation(linked.Token))
+            // Governance preamble, then the fenced persona slot, as the instruction channel; history stays User/Assistant only.
+            var request = new ChatRequest(prompt, PersonaPrompt.Build(ctx.Persona));
+            var stream = provider is IPersonaAwareChatProvider labeled
+                ? labeled.StreamAsync(request, ctx.Persona.Name, linked.Token)
+                : provider.StreamAsync(request, linked.Token);
+            await foreach (var delta in stream.WithCancellation(linked.Token))
             {
                 if (firstTokenMs is null)
                 {

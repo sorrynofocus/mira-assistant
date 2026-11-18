@@ -19,7 +19,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         await using var connection = await database.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT Id, Title, CreatedAt, UpdatedAt FROM Conversations
+            SELECT Id, Title, CreatedAt, UpdatedAt, PersonaId FROM Conversations
             WHERE OwnerUserId = $owner
             ORDER BY UpdatedAt DESC, Id
             LIMIT $take OFFSET $skip;
@@ -42,8 +42,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         RequirePersona(personaId);
         var normalized = ConversationLimits.NormalizeTitle(title);
         await using var connection = await database.OpenAsync(cancellationToken);
-        // Migration 5 (chunk A) persists personaId. Until then the returned pin is the built-in MIRA.
-        return await InsertConversationAsync(connection, null, ownerUserId, normalized, cancellationToken);
+        return await InsertConversationAsync(connection, null, ownerUserId, normalized, personaId, cancellationToken);
     }
 
     public async Task<ConversationSnapshot?> GetAsync(Guid ownerUserId, Guid conversationId, CancellationToken cancellationToken = default)
@@ -51,7 +50,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         RequireOwner(ownerUserId);
         await using var connection = await database.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT Id, Title, CreatedAt, UpdatedAt FROM Conversations WHERE {OwnedConversation};";
+        command.CommandText = $"SELECT Id, Title, CreatedAt, UpdatedAt, PersonaId FROM Conversations WHERE {OwnedConversation};";
         AddScope(command, ownerUserId, conversationId);
         ConversationSummary summary;
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
@@ -70,7 +69,6 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
     {
         RequireOwner(ownerUserId);
         RequirePersona(personaIdForNew);
-        // personaIdForNew is accepted so the interface compiles; migration 5 persists it. New rows currently report BuiltInMira.
         await using var connection = await database.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
         ConversationSummary? summary = null;
@@ -78,7 +76,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         {
             command.Transaction = transaction;
             command.CommandText = """
-                SELECT Id, Title, CreatedAt, UpdatedAt FROM Conversations
+                SELECT Id, Title, CreatedAt, UpdatedAt, PersonaId FROM Conversations
                 WHERE OwnerUserId = $owner
                 ORDER BY UpdatedAt DESC, Id
                 LIMIT 1;
@@ -88,7 +86,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
             if (await reader.ReadAsync(cancellationToken)) summary = ReadSummary(reader);
         }
 
-        summary ??= await InsertConversationAsync(connection, transaction, ownerUserId, null, cancellationToken);
+        summary ??= await InsertConversationAsync(connection, transaction, ownerUserId, null, personaIdForNew, cancellationToken);
         var snapshot = await SnapshotAsync(connection, transaction, ownerUserId, summary, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return snapshot;
@@ -222,29 +220,33 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         return message;
     }
 
+    // Soft pin (migration 5: no FK). Stores personaId as-is and bumps UpdatedAt; the persona is not verified here.
+    // PUT /api/conversations/{id}/persona uses SqlitePersonaStore.SetConversationPersonaAsync, which checks both in one transaction.
     public async Task<bool> SetPersonaAsync(Guid ownerUserId, Guid conversationId, Guid personaId, CancellationToken cancellationToken = default)
     {
-        // Migration 5 persists this column. Until then, accept the call so the interface compiles and only check ownership.
         RequireOwner(ownerUserId);
         RequirePersona(personaId);
         await using var connection = await database.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT 1 FROM Conversations WHERE {OwnedConversation} LIMIT 1;";
+        command.CommandText = $"UPDATE Conversations SET PersonaId = $personaId, UpdatedAt = $now WHERE {OwnedConversation};";
         AddScope(command, ownerUserId, conversationId);
-        return await command.ExecuteScalarAsync(cancellationToken) is not null;
+        command.Parameters.AddWithValue("$personaId", personaId.ToString());
+        command.Parameters.AddWithValue("$now", MiraDatabase.FormatTime(time.GetUtcNow()));
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
     private async Task<ConversationSummary> InsertConversationAsync(
-        SqliteConnection connection, SqliteTransaction? transaction, Guid ownerUserId, string? title, CancellationToken cancellationToken)
+        SqliteConnection connection, SqliteTransaction? transaction, Guid ownerUserId, string? title, Guid personaId, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        var summary = new ConversationSummary(Guid.NewGuid(), title, now, now, PersonaIds.BuiltInMira);
+        var summary = new ConversationSummary(Guid.NewGuid(), title, now, now, personaId);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO Conversations (Id, OwnerUserId, Title, CreatedAt, UpdatedAt)
-            VALUES ($id, $owner, $title, $now, $now);
+            INSERT INTO Conversations (Id, OwnerUserId, Title, CreatedAt, UpdatedAt, PersonaId)
+            VALUES ($id, $owner, $title, $now, $now, $personaId);
             """;
+        command.Parameters.AddWithValue("$personaId", personaId.ToString());
         command.Parameters.AddWithValue("$id", summary.Id.ToString());
         command.Parameters.AddWithValue("$owner", ownerUserId.ToString());
         command.Parameters.AddWithValue("$title", (object?)title ?? DBNull.Value);
@@ -320,7 +322,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         reader.IsDBNull(1) ? null : reader.GetString(1),
         MiraDatabase.ParseTime(reader.GetString(2)),
         MiraDatabase.ParseTime(reader.GetString(3)),
-        PersonaIds.BuiltInMira);
+        Guid.Parse(reader.GetString(4)));
 
     private static void RequireOwner(Guid ownerUserId)
     {

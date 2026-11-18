@@ -10,6 +10,7 @@ using Mira.Api.Auth;
 using Mira.Api.Chat;
 using Mira.Api.Conversations;
 using Mira.Api.Diagnostics;
+using Mira.Api.Personas;
 using Mira.Api.Preferences;
 using Mira.Api.Security;
 using Mira.Core;
@@ -59,6 +60,8 @@ public static class MiraHost
         services.Configure<KestrelServerOptions>(kestrel => kestrel.AddServerHeader = false);
 
         services.AddSingleton<IConversationStore, SqliteConversationStore>();
+        services.AddSingleton<SqlitePersonaStore>();
+        services.AddSingleton<IPersonaStore>(sp => sp.GetRequiredService<SqlitePersonaStore>());
         services.AddSingleton<IUserPreferenceStore, SqliteUserPreferenceStore>();
         services.AddSingleton<IChatProvider>(sp =>
             new MockChatProvider(TimeSpan.FromMilliseconds(sp.GetRequiredService<MiraOptions>().Chat.MockDelayMilliseconds)));
@@ -147,6 +150,7 @@ public static class MiraHost
         api.MapChatEndpoints();
         api.MapConversationEndpoints();
         api.MapDiagnosticsEndpoints();
+        api.MapPersonaEndpoints();
         api.MapPreferenceEndpoints();
     }
 

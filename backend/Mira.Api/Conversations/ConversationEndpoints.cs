@@ -1,6 +1,9 @@
 using Mira.Api.Auth;
 using Mira.Api.Chat;
+using Mira.Api.Personas;
 using Mira.Core;
+using Mira.Infrastructure;
+using Mira.Infrastructure.Sqlite;
 
 namespace Mira.Api.Conversations;
 
@@ -8,17 +11,36 @@ public sealed record CreateConversationRequest(string? Title);
 
 public sealed record RenameConversationRequest(string? Title);
 
-public sealed record ConversationSummaryResponse(Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt)
+// PersonaStatus: "active" when the pinned persona is built-in or still owned, "deleted" when its row is gone (soft pin; M4).
+public sealed record ConversationSummaryResponse(
+    Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, Guid PersonaId, string PersonaStatus)
 {
-    public static ConversationSummaryResponse From(ConversationSummary c) => new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt);
+    public static ConversationSummaryResponse From(ConversationSummary c, string personaStatus) =>
+        new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt, c.PersonaId, personaStatus);
 
-    public static ConversationSummaryResponse From(ConversationSnapshot c) => new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt);
+    public static ConversationSummaryResponse From(ConversationSnapshot c, string personaStatus) =>
+        new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt, c.PersonaId, personaStatus);
+}
+
+public static class PersonaStatuses
+{
+    public const string Active = "active";
+    public const string Deleted = "deleted";
+
+    public static async Task<string> ForAsync(IPersonaStore personas, Guid owner, Guid personaId, CancellationToken cancellationToken) =>
+        await personas.GetAsync(owner, personaId, cancellationToken) is null ? Deleted : Active;
 }
 
 public sealed record ConversationPageResponse(IReadOnlyList<ConversationSummaryResponse> Items, int Skip, int Take, bool HasMore);
 
 public sealed record ConversationResponse(
-    Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, IReadOnlyList<ConversationMessage> Messages);
+    Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, IReadOnlyList<ConversationMessage> Messages,
+    Guid PersonaId, string PersonaStatus)
+{
+    public static async Task<ConversationResponse> FromAsync(ConversationSnapshot c, IPersonaStore personas, CancellationToken cancellationToken) =>
+        new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt, c.Messages, c.PersonaId,
+            await PersonaStatuses.ForAsync(personas, c.OwnerUserId, c.PersonaId, cancellationToken));
+}
 
 // Owner-scoped conversation CRUD (M2). The owner always comes from the principal. A missing conversation and someone else's
 // look the same (404). Unsafe methods are covered by the /api group's CSRF filter and the same-origin check.
@@ -28,7 +50,7 @@ public static class ConversationEndpoints
     {
         var group = api.MapGroup("/conversations");
 
-        group.MapGet("/", async (HttpContext http, IConversationStore store, int? skip, int? take, CancellationToken cancellationToken) =>
+        group.MapGet("/", async (HttpContext http, IConversationStore store, IPersonaStore personas, int? skip, int? take, CancellationToken cancellationToken) =>
         {
             var s = skip ?? 0;
             var t = take ?? ConversationLimits.DefaultPageSize;
@@ -41,28 +63,54 @@ public static class ConversationEndpoints
             var owner = CurrentUser.GetUserId(http.User);
             var items = await store.ListAsync(owner, s, t, cancellationToken);
             var hasMore = items.Count == t && (await store.ListAsync(owner, s + t, 1, cancellationToken)).Count > 0;
-            return Results.Ok(new ConversationPageResponse(items.Select(ConversationSummaryResponse.From).ToArray(), s, t, hasMore));
+            var readable = (await personas.ListAsync(owner, cancellationToken)).Select(p => p.Id).ToHashSet();
+            var page = items
+                .Select(c => ConversationSummaryResponse.From(c, readable.Contains(c.PersonaId) ? PersonaStatuses.Active : PersonaStatuses.Deleted))
+                .ToArray();
+            return Results.Ok(new ConversationPageResponse(page, s, t, hasMore));
         });
 
-        group.MapPost("/", async (HttpContext http, IConversationStore store, CreateConversationRequest? body, CancellationToken cancellationToken) =>
+        // A new conversation copies the owner's current default persona (a concrete pin, never "follow the default").
+        group.MapPost("/", async (HttpContext http, IConversationStore store, IPersonaStore personas, CreateConversationRequest? body, CancellationToken cancellationToken) =>
         {
             if (!TryNormalize(body?.Title, out var title, out var problem)) return problem;
-            var created = await store.CreateAsync(CurrentUser.GetUserId(http.User), title, cancellationToken);
-            return Results.Created($"/api/conversations/{created.Id}", ConversationSummaryResponse.From(created));
+            var owner = CurrentUser.GetUserId(http.User);
+            var created = await store.CreateAsync(owner, title, await personas.GetDefaultAsync(owner, cancellationToken), cancellationToken);
+            return Results.Created($"/api/conversations/{created.Id}",
+                ConversationSummaryResponse.From(created, await PersonaStatuses.ForAsync(personas, owner, created.PersonaId, cancellationToken)));
         });
 
-        group.MapGet("/{id:guid}", async (Guid id, HttpContext http, IConversationStore store, CancellationToken cancellationToken) =>
+        group.MapGet("/{id:guid}", async (Guid id, HttpContext http, IConversationStore store, IPersonaStore personas, CancellationToken cancellationToken) =>
             await store.GetAsync(CurrentUser.GetUserId(http.User), id, cancellationToken) is { } c
-                ? Results.Ok(new ConversationResponse(c.Id, c.Title, c.CreatedAt, c.UpdatedAt, c.Messages))
+                ? Results.Ok(await ConversationResponse.FromAsync(c, personas, cancellationToken))
                 : NotFound());
 
-        group.MapPatch("/{id:guid}", async (Guid id, HttpContext http, IConversationStore store, RenameConversationRequest body, CancellationToken cancellationToken) =>
+        // Pins the conversation to a persona for future turns. In one write transaction the conversation must be owned and the
+        // persona built-in or owned; a foreign or unknown conversation or persona is a 404 (never 400).
+        group.MapPut("/{id:guid}/persona", async (Guid id, HttpContext http, SqlitePersonaStore pins, CancellationToken cancellationToken) =>
+        {
+            var (document, problem) = await PersonaEndpoints.ReadJsonAsync(http, cancellationToken);
+            if (document is null) return problem!;
+            using (document)
+            {
+                if (!PersonaRules.TryParseDefault(document.RootElement, out var personaId, out var error)) return PersonaEndpoints.Invalid(error!);
+                var owner = CurrentUser.GetUserId(http.User);
+                return await pins.SetConversationPersonaAsync(owner, id, personaId, cancellationToken) switch
+                {
+                    ConversationPersonaResult.ConversationNotFound => NotFound(),
+                    ConversationPersonaResult.PersonaNotFound => PersonaEndpoints.NotFound(),
+                    _ => Results.NoContent() // pinned by MIRA Boss: the frontend expects 204
+                };
+            }
+        });
+
+        group.MapPatch("/{id:guid}", async (Guid id, HttpContext http, IConversationStore store, IPersonaStore personas, RenameConversationRequest body, CancellationToken cancellationToken) =>
         {
             if (!TryNormalize(body.Title, out var title, out var problem)) return problem;
             var owner = CurrentUser.GetUserId(http.User);
             if (!await store.RenameAsync(owner, id, title, cancellationToken)) return NotFound();
             return await store.GetAsync(owner, id, cancellationToken) is { } c
-                ? Results.Ok(ConversationSummaryResponse.From(c))
+                ? Results.Ok(ConversationSummaryResponse.From(c, await PersonaStatuses.ForAsync(personas, owner, c.PersonaId, cancellationToken)))
                 : NotFound(); // deleted concurrently
         });
 

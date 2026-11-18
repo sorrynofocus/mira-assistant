@@ -119,7 +119,7 @@ public sealed class ConversationApiTests
         var current = await client.GetFromJsonAsync<JsonElement>("/api/conversations/current");
         var byId = await client.GetFromJsonAsync<JsonElement>($"/api/conversations/{id}");
 
-        Assert.Equal(["id", "title", "createdAt", "updatedAt", "messages"], current.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(["id", "title", "createdAt", "updatedAt", "messages", "personaId", "personaStatus"], current.EnumerateObject().Select(p => p.Name));
         Assert.Equal(byId.GetRawText(), current.GetRawText());
         Assert.Equal("latest", current.GetProperty("title").GetString());
         Assert.Equal(["id", "role", "content", "status", "createdAt", "modelId", "requestId"],

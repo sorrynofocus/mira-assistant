@@ -250,7 +250,7 @@ public sealed class SqliteConversationStoreTests : ConversationStoreContractTest
     [Fact]
     public async Task FreshDatabaseIsAtTheLatestVersionAndMigrationsAreIdempotent()
     {
-        Assert.Equal(4, MiraDatabase.LatestVersion);
+        Assert.Equal(5, MiraDatabase.LatestVersion);
         await _database.MigrateAsync();
         await _database.MigrateAsync();
         await using var connection = await _database.OpenAsync();

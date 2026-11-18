@@ -4,7 +4,14 @@ using Mira.Core;
 
 namespace Mira.Infrastructure;
 
-public sealed class MockChatProvider(TimeSpan delay) : IChatProvider
+// Optional provider hook (M4): lets a provider label its output with the resolved persona's display name. Only the Mock uses
+// it; a real provider gets the persona through ChatRequest.Instructions only.
+public interface IPersonaAwareChatProvider : IChatProvider
+{
+    IAsyncEnumerable<string> StreamAsync(ChatRequest request, string personaName, CancellationToken cancellationToken = default);
+}
+
+public sealed class MockChatProvider(TimeSpan delay) : IPersonaAwareChatProvider
 {
     // Mock-only test hook: a user message containing this marker makes the stream fail after its first delta.
     public const string ErrorTrigger = "[mock-error]";
@@ -16,25 +23,32 @@ public sealed class MockChatProvider(TimeSpan delay) : IChatProvider
 
     public string ModelId => "mock-chat";
 
-    public static string ResponseFor(string userMessage)
+    // Deterministic echo that reflects the persona, e.g. MIRA mock (Jack) response to "...". No model was called.
+    public static string ResponseFor(string userMessage, string personaName = BuiltInPersona.Name)
     {
+        ArgumentNullException.ThrowIfNull(personaName);
         var info = new StringInfo(userMessage.ReplaceLineEndings(" ").Trim());
         var echo = info.LengthInTextElements > EchoTextElements
             ? info.SubstringByTextElements(0, EchoTextElements) + "…"
             : info.String;
-        return $"MIRA mock response to \"{echo}\". No model was called.";
+        return $"MIRA mock ({personaName}) response to \"{echo}\". No model was called.";
     }
+
+    public IAsyncEnumerable<string> StreamAsync(ChatRequest request, CancellationToken cancellationToken = default) =>
+        StreamAsync(request, BuiltInPersona.Name, cancellationToken);
 
     public async IAsyncEnumerable<string> StreamAsync(
         ChatRequest request,
+        string personaName,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(personaName);
         var lastUser = request.Messages.LastOrDefault(m => m.Role == ChatRole.User)
             ?? throw new ArgumentException("The request needs at least one user message.", nameof(request));
         ArgumentException.ThrowIfNullOrWhiteSpace(lastUser.Content);
 
-        var words = ResponseFor(lastUser.Content).Split(' ');
+        var words = ResponseFor(lastUser.Content, personaName).Split(' ');
         var fail = lastUser.Content.Contains(ErrorTrigger, StringComparison.Ordinal);
         for (var i = 0; i < words.Length; i++)
         {
