@@ -214,10 +214,11 @@ describe('resolve and apply', () => {
 
     const media = fakeMedia(false);
     const { root, meta, attrs } = fakeTarget();
-    const prefs = { theme: 'system' as const, fontSize: 'large' as const, inspectorOpenByDefault: false };
+    const prefs = { theme: 'system' as const, fontSize: 'large' as const, inspectorOpenByDefault: false, showInspectLinks: true };
     expect(applyPreferences(prefs, { root, themeColorMeta: meta }, media, memoryStorage())).toBe('mira-dark');
     expect(attrs['data-theme']).toBe('mira-dark');
     expect(attrs['data-font-size']).toBe('large');
+    expect(attrs['data-show-inspect-links']).toBe('true');
     expect(meta.content).toBe('#121a2c');
     expect(isWatchingSystemTheme()).toBe(true);
 
@@ -246,7 +247,7 @@ describe('resolve and apply', () => {
     expect(readCachedTheme(storage)).toBe('sovereign');
     const { root, meta, attrs } = fakeTarget();
     applyPreferences(
-      { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: true },
+      { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: true, showInspectLinks: false },
       { root, themeColorMeta: meta },
       fakeMedia(true),
       storage,
@@ -254,8 +255,11 @@ describe('resolve and apply', () => {
     expect(storage.getItem(STORAGE_THEME)).toBe('mira-dark');
     expect(storage.getItem(STORAGE_FONT_SIZE)).toBe('default');
     expect(storage.getItem('inspectorOpenByDefault')).toBeNull();
+    expect(storage.getItem('mira.showInspectLinks')).toBeNull();
+    expect(storage.getItem('showInspectLinks')).toBeNull();
     expect(attrs['data-theme']).toBe('mira-dark');
     expect(attrs['data-font-size']).toBe('default');
+    expect(attrs['data-show-inspect-links']).toBe('false');
   });
 
   it('caches only allowlisted theme and font-size keys', () => {

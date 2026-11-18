@@ -205,6 +205,7 @@ The page shows a **Sign in** form. After you sign in it shows the chat:
   - **Theme:** **MIRA Dark** (the default), **Sovereign** (black and white, high contrast; the API status dot is green when online) or **Match system** (follows your OS light/dark setting: dark gives MIRA Dark, light gives Sovereign, and it switches live).
   - **Font size:** small, default or large.
   - **Open the inspector by default:** whether the inspector panel opens when you sign in. The **Show inspector** button still toggles it for the current session without changing this setting.
+  - **Show "Inspect request" links in chat:** whether each chat bubble with a request id shows an **Inspect request** link (on by default). Turning this off hides the links at once; you can still open the inspector from the toolbar.
   - The page remembers your theme and font size in the browser, so it opens in the right look without a flash. Nothing else is cached.
 - **Sign out** is in Settings. It ends the session on the server. If MIRA can't confirm that (for example, the API has stopped), you stay signed in and see an error. Try again once the API is running.
 

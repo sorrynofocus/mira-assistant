@@ -106,6 +106,8 @@ export function syncSettingsControls(root: ParentNode, preferences: AppearancePr
   }
   const inspector = root.querySelector<HTMLInputElement>('#settings-inspector-default');
   if (inspector) inspector.checked = preferences.inspectorOpenByDefault;
+  const inspectLinks = root.querySelector<HTMLInputElement>('#settings-inspect-links');
+  if (inspectLinks) inspectLinks.checked = preferences.showInspectLinks;
 }
 
 export function showSettingsAlert(target: HTMLElement, message: string | null): void {
@@ -118,6 +120,7 @@ export class SettingsController {
     theme: readCachedTheme(),
     fontSize: readCachedFontSize(),
     inspectorOpenByDefault: DEFAULT_PREFERENCES.inspectorOpenByDefault,
+    showInspectLinks: DEFAULT_PREFERENCES.showInspectLinks,
   };
 
   // Saves are serialized (one PUT at a time, in the order the user made the changes) and only the latest change's
@@ -134,6 +137,7 @@ export class SettingsController {
       theme: isThemeValue(preferences.theme) ? preferences.theme : DEFAULT_PREFERENCES.theme,
       fontSize: isFontSizeValue(preferences.fontSize) ? preferences.fontSize : DEFAULT_PREFERENCES.fontSize,
       inspectorOpenByDefault: preferences.inspectorOpenByDefault === true,
+      showInspectLinks: preferences.showInspectLinks !== false,
     };
     this.#confirmed = loaded;
     if (seq === this.#seq) {
@@ -172,6 +176,7 @@ export class SettingsController {
         theme: isThemeValue(saved.theme) ? saved.theme : DEFAULT_PREFERENCES.theme,
         fontSize: isFontSizeValue(saved.fontSize) ? saved.fontSize : DEFAULT_PREFERENCES.fontSize,
         inspectorOpenByDefault: saved.inspectorOpenByDefault === true,
+        showInspectLinks: saved.showInspectLinks !== false,
       };
       if (seq !== this.#seq) return true; // superseded by a later change
       this.current = { ...this.#confirmed };
@@ -197,6 +202,7 @@ export class SettingsController {
       theme: readCachedTheme(),
       fontSize: readCachedFontSize(),
       inspectorOpenByDefault: DEFAULT_PREFERENCES.inspectorOpenByDefault,
+      showInspectLinks: DEFAULT_PREFERENCES.showInspectLinks,
     };
     applyPreferences(this.current);
   }

@@ -452,6 +452,8 @@ settingsDialog.addEventListener('change', (event) => {
     void savePreference({ fontSize: target.value });
   } else if (target.id === 'settings-inspector-default') {
     void savePreference({ inspectorOpenByDefault: target.checked });
+  } else if (target.id === 'settings-inspect-links') {
+    void savePreference({ showInspectLinks: target.checked });
   }
 });
 

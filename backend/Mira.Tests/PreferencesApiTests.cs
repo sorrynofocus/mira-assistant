@@ -41,17 +41,18 @@ public sealed class PreferencesApiTests
 
         var response = await client.GetAsync(Path);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("""{"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false}""", await response.Content.ReadAsStringAsync());
+        Assert.Equal("""{"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false,"showInspectLinks":true}""", await response.Content.ReadAsStringAsync());
     }
 
     [Theory]
-    [InlineData("""{"theme":"sovereign"}""", "sovereign", "default", false)]
-    [InlineData("""{"theme":"system"}""", "system", "default", false)]
-    [InlineData("""{"fontSize":"small"}""", "mira-dark", "small", false)]
-    [InlineData("""{"fontSize":"large"}""", "mira-dark", "large", false)]
-    [InlineData("""{"inspectorOpenByDefault":true}""", "mira-dark", "default", true)]
-    [InlineData("""{"theme":"sovereign","fontSize":"large","inspectorOpenByDefault":true}""", "sovereign", "large", true)]
-    public async Task PutThenGetRoundTrips(string body, string theme, string fontSize, bool inspector)
+    [InlineData("""{"theme":"sovereign"}""", "sovereign", "default", false, true)]
+    [InlineData("""{"theme":"system"}""", "system", "default", false, true)]
+    [InlineData("""{"fontSize":"small"}""", "mira-dark", "small", false, true)]
+    [InlineData("""{"fontSize":"large"}""", "mira-dark", "large", false, true)]
+    [InlineData("""{"inspectorOpenByDefault":true}""", "mira-dark", "default", true, true)]
+    [InlineData("""{"showInspectLinks":false}""", "mira-dark", "default", false, false)]
+    [InlineData("""{"theme":"sovereign","fontSize":"large","inspectorOpenByDefault":true,"showInspectLinks":false}""", "sovereign", "large", true, false)]
+    public async Task PutThenGetRoundTrips(string body, string theme, string fontSize, bool inspector, bool showInspectLinks)
     {
         using var factory = new MiraApiFactory();
         using var client = await factory.LoggedInClientAsync("owner");
@@ -63,6 +64,7 @@ public sealed class PreferencesApiTests
             Assert.Equal(theme, result.GetProperty("theme").GetString());
             Assert.Equal(fontSize, result.GetProperty("fontSize").GetString());
             Assert.Equal(inspector, result.GetProperty("inspectorOpenByDefault").GetBoolean());
+            Assert.Equal(showInspectLinks, result.GetProperty("showInspectLinks").GetBoolean());
         }
     }
 
@@ -71,12 +73,13 @@ public sealed class PreferencesApiTests
     {
         using var factory = new MiraApiFactory();
         using var client = await factory.LoggedInClientAsync("owner");
-        await PutAsync(client, """{"theme":"sovereign","fontSize":"large","inspectorOpenByDefault":true}""");
+        await PutAsync(client, """{"theme":"sovereign","fontSize":"large","inspectorOpenByDefault":true,"showInspectLinks":false}""");
 
         var result = await (await PutAsync(client, """{"fontSize":"small"}""")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("sovereign", result.GetProperty("theme").GetString());
         Assert.Equal("small", result.GetProperty("fontSize").GetString());
         Assert.True(result.GetProperty("inspectorOpenByDefault").GetBoolean());
+        Assert.False(result.GetProperty("showInspectLinks").GetBoolean());
     }
 
     [Theory]
@@ -85,6 +88,7 @@ public sealed class PreferencesApiTests
     [InlineData("""{"theme":null}""", "theme: Must be one of: mira-dark, sovereign, system.")]
     [InlineData("""{"fontSize":17}""", "fontSize: Must be one of: small, default, large.")]
     [InlineData("""{"inspectorOpenByDefault":"true"}""", "inspectorOpenByDefault: Must be true or false.")]
+    [InlineData("""{"showInspectLinks":"true"}""", "showInspectLinks: Must be true or false.")]
     [InlineData("""{"theme":"system","theme":"sovereign"}""", "theme: Preference given more than once.")]
     [InlineData("""{"ownerUserId":"00000000-0000-0000-0000-000000000001"}""", "Unknown preference.")]
     [InlineData("""{"<img src=x onerror=alert(1)>":"x"}""", "Unknown preference.")]
@@ -169,7 +173,7 @@ public sealed class PreferencesApiTests
         using var bob = await factory.LoggedInClientAsync("bob");
 
         await PutAsync(alice, """{"theme":"sovereign","fontSize":"large","inspectorOpenByDefault":true}""");
-        Assert.Equal("""{"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false}""", await (await bob.GetAsync(Path)).Content.ReadAsStringAsync());
+        Assert.Equal("""{"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false,"showInspectLinks":true}""", await (await bob.GetAsync(Path)).Content.ReadAsStringAsync());
 
         await PutAsync(bob, """{"theme":"system"}""");
         Assert.Equal("sovereign", (await GetAsync(alice)).GetProperty("theme").GetString());

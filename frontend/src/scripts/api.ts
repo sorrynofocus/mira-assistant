@@ -26,6 +26,7 @@ export interface UserPreferences {
   theme: ThemePreference;
   fontSize: FontSizePreference;
   inspectorOpenByDefault: boolean;
+  showInspectLinks: boolean;
 }
 
 export type Preferences = UserPreferences;

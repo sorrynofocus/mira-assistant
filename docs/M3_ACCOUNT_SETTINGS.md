@@ -12,6 +12,7 @@ Constraints (AGENTS.md): Astro static + vanilla TypeScript, no new dependencies 
 | Settings | The gear opens an accessible modal Settings dialog. |
 | Themes | `mira-dark` = **MIRA Dark** (today's look, the default); `sovereign` = **Sovereign** (black-and-white, high-contrast, flat; inspired by a black/white aesthetic, no logos or trademarks; exception: the API status dot is green when online, using the MIRA Dark `--ok` green `#76d7a5` — owner decision, 2026-11-17 22:34 MST); `system` = **Match system** (follows the OS `prefers-color-scheme`: dark → MIRA Dark, light → Sovereign; updates live when the OS setting changes). |
 | M3 settings | Theme, font size (`small` / `default` / `large`), inspector open by default (boolean), and Sign out (moved into the dialog). More settings later. |
+| Post-acceptance (owner request 2026-11-17 23:22 MST) | `showInspectLinks` (boolean, default `true`): a Settings checkbox, **Show "Inspect request" links in chat**, stored like `inspectorOpenByDefault` with no new migration. Sovereign inspector request cards stay black with white text and a white inset outline (selected or not); hover/focus uses a thicker outline. Never white-on-white. Settings dialog buttons were already fine and were left alone. |
 | API path | `/api/me/preferences`: un-versioned, under the existing `/api` group, like `/api/auth/me`, `/api/conversations` and `/api/diagnostics` (MIRA Boss decision). |
 | Security | MIRA Security threat-models this plan before chunks A and B start and security-reviews the code after chunk C, alongside MIRA Reviewer (section 6). |
 
@@ -19,10 +20,10 @@ Out of scope (later): profile editing, avatar upload, password change, density, 
 
 ## 2. Contract (chunk 0, frozen): `backend/Mira.Core/Preferences.cs`
 
-- `PreferenceKeys`: `theme`, `fontSize`, `inspectorOpenByDefault`.
+- `PreferenceKeys`: `theme`, `fontSize`, `inspectorOpenByDefault`, and (owner request 2026-11-17 23:22 MST) `showInspectLinks`.
 - `ThemeValues`: `mira-dark`, `sovereign`, `system`. `FontSizeValues`: `small`, `default`, `large`.
-- `UserPreferences(Theme, FontSize, InspectorOpenByDefault)` with `Default` = `mira-dark` / `default` / `false`, `FromStored(rows)` (unknown or invalid stored values fall back to the default) and `Apply(update)`.
-- `PreferenceUpdate(Theme?, FontSize?, InspectorOpenByDefault?)` (null = unchanged) with `ToStored()` (booleans stored as `"true"`/`"false"`).
+- `UserPreferences(Theme, FontSize, InspectorOpenByDefault, ShowInspectLinks)` with `Default` = `mira-dark` / `default` / `false` / `true`, `FromStored(rows)` (unknown or invalid stored values fall back to the default) and `Apply(update)`.
+- `PreferenceUpdate(Theme?, FontSize?, InspectorOpenByDefault?, ShowInspectLinks?)` (null = unchanged) with `ToStored()` (booleans stored as `"true"`/`"false"`).
 - `PreferenceRules.TryParseUpdate(JsonElement, out update, out error)`: the PUT validation rules below. `PreferenceValidationError(Key, Message)` names the key only if it is allowlisted (an unknown key gives `Key = ""` and the fixed message `Unknown preference.`), and never echoes a submitted value.
 - `IUserPreferenceStore`: `GetAsync(owner)` (defaults filled in, never null) and `UpdateAsync(owner, update)` (upsert in one transaction, returns the full object).
 - Tests: `backend/Mira.Tests/PreferenceContractTests.cs`.
@@ -33,7 +34,7 @@ Both routes are in the existing `/api` group: signed-in user required (fallback 
 
 **`GET /api/me/preferences`** → **200**
 ```json
-{ "theme": "mira-dark", "fontSize": "default", "inspectorOpenByDefault": false }
+{ "theme": "mira-dark", "fontSize": "default", "inspectorOpenByDefault": false, "showInspectLinks": true }
 ```
 Always the full object with defaults filled in. 401 when signed out.
 
@@ -44,6 +45,7 @@ Always the full object with defaults filled in. 401 when signed out.
 | `theme` | `"mira-dark"`, `"sovereign"`, `"system"` |
 | `fontSize` | `"small"`, `"default"`, `"large"` |
 | `inspectorOpenByDefault` | `true`, `false` (JSON booleans) |
+| `showInspectLinks` | `true`, `false` (JSON booleans; default `true`; added 2026-11-17 23:22 MST, no new migration) |
 
 **400** (problem JSON; `title` names the key and the rule only for allowlisted keys, never a submitted value or an unknown key name; an unknown key gives the fixed title `Unknown preference.`) when the body is not a JSON object, a key is unknown (including `ownerUserId` or any other field), a key appears twice, a value has the wrong type (`null` and `"true"` included) or is not on the allowlist, or the object is empty. **400** with the fixed title `The request body must be a JSON object.` for invalid JSON or an empty body, and **415** with a fixed title for a non-JSON `Content-Type`; neither includes request content or parser text (also in Development), and neither the body nor the exception message is logged. **403** without the CSRF header, **401** signed out. Preference values are not logged.
 
@@ -73,10 +75,10 @@ Key/value rows, so later settings need no schema change. Only keys and values on
   - writes only constants from a fixed lookup table: `data-theme` and `data-font-size` on `<html>` and the `theme-color` meta `content` (e.g. MIRA Dark `#121a2c`, Sovereign `#000000`), using `setAttribute` only, never `innerHTML` or `document.write`;
   - never writes to `localStorage`; is wrapped in `try/catch` (storage may be blocked).
 - **Live system changes.** While the chosen theme is `system`, `theme.ts` listens to the media query's `change` event and re-resolves; switching to a fixed theme removes the listener.
-- **Server wins.** After sign-in, `GET /api/me/preferences` is applied and only `theme` and `fontSize` are re-cached (`mira.theme`, `mira.fontSize`). Never cache the username, user ID or `inspectorOpenByDefault`. The cache is shared by everyone using the browser, so the login page shows the last user's look (non-sensitive; accepted).
+- **Server wins.** After sign-in, `GET /api/me/preferences` is applied and only `theme` and `fontSize` are re-cached (`mira.theme`, `mira.fontSize`). Never cache the username, user ID, `inspectorOpenByDefault` or `showInspectLinks`. The cache is shared by everyone using the browser, so the login page shows the last user's look (non-sensitive; accepted).
 - **Sign out** (in the dialog) reuses the existing flow: `POST /api/auth/logout` with `X-CSRF-TOKEN` (no new or GET sign-out path), then closes the dialog and clears in-memory user state (preferences object, username, conversation list). Only `mira.theme` and `mira.fontSize` stay in `localStorage`.
 - **Account area.** Initial and username rendered with `textContent` only.
-- **Settings dialog.** Native `<dialog>` with `showModal()`, labelled by its heading. Focus starts on the first control, Tab/Shift+Tab stay inside, Esc and Close dismiss it, and focus returns to the gear. Theme and font size are radio groups (`fieldset`/`legend`); "Open the inspector by default" is a checkbox; Sign out is a button (flow above). A change applies at once and is sent with `PUT`; on failure the change reverts and a `role="alert"` message shows; success is announced through `#announcer`.
+- **Settings dialog.** Native `<dialog>` with `showModal()`, labelled by its heading. Focus starts on the first control, Tab/Shift+Tab stay inside, Esc and Close dismiss it, and focus returns to the gear. Theme and font size are radio groups (`fieldset`/`legend`); "Open the inspector by default" and "Show “Inspect request” links in chat" (`showInspectLinks`, default on) are checkboxes; Sign out is a button (flow above). Toggling inspect links hides or shows the per-bubble **Inspect request** controls at once (`data-show-inspect-links` on `<html>` plus CSS); a failed `PUT` reverts. A change applies at once and is sent with `PUT`; on failure the change reverts and a `role="alert"` message shows; success is announced through `#announcer`.
 - **Inspector open by default.** Applied once on sign-in or page load. Toggling the inspector later doesn't change the preference.
 - **Contrast.** Both themes meet WCAG AA (4.5:1 text, 3:1 UI components and focus indicator).
 
@@ -128,7 +130,7 @@ Untouched by M3: auth, sessions, conversations, diagnostics, chat endpoints and 
 
 - **As built:** matches sections 2–6. Migration 4 adds the optional hardening from section 9 (`WITHOUT ROWID`, length `CHECK`s). `PUT` reads the body itself: non-JSON `Content-Type` → 415, invalid JSON or empty body → 400, and (integration fix) a body over Kestrel's 256 KB limit → fixed 413 `The request body is too large.` instead of the Development exception page. All 400/413/415 bodies are fixed titles, identical in Development and Production.
 - **Frontend deviations (accepted):** the charset, viewport and theme-color metas come before `<script src="/theme-init.js">` (still the first script, ahead of the stylesheet); sign-out clears `ConversationWorkspace`'s public fields directly.
-- **MIRA Boss decisions:** the pre-existing MIRA Dark contrast gaps (some muted, warning and error text on the selected item; focus ring against the accent; input and panel borders; hover) are **accepted for M3** to keep MIRA Dark pixel-identical, and go to the backlog. The **Show inspector** toggle doesn't write the preference by design: the Settings checkbox is the default, the toggle is per session. Owner decision 2026-11-17 22:34 MST: in Sovereign, the API status dot uses the MIRA Dark `--ok` green `#76d7a5` when online; the offline ring and the rest of the theme stay monochrome.
+- **MIRA Boss decisions:** the pre-existing MIRA Dark contrast gaps (some muted, warning and error text on the selected item; focus ring against the accent; input and panel borders; hover) are **accepted for M3** to keep MIRA Dark pixel-identical, and go to the backlog. The **Show inspector** toggle doesn't write the preference by design: the Settings checkbox is the default, the toggle is per session. Owner decision 2026-11-17 22:34 MST: in Sovereign, the API status dot uses the MIRA Dark `--ok` green `#76d7a5` when online; the offline ring and the rest of the theme stay monochrome. Owner request 2026-11-17 23:22 MST: Sovereign inspector request cards (`<button class="inspector-request__button">`) stay black with white text and a 1px white inset outline (2px when selected, 3px on hover/focus) instead of the inverted `--selected` fill, which left `.inspector-request__meta` (`--text-muted`, white) unreadable until hover applied the more-specific `[data-theme="sovereign"] button:hover` rule; Settings dialog buttons were left alone. Same request added `showInspectLinks` (default true).
 - **Overlapping saves (Reviewer Minor 2):** `SettingsController.change` serializes `PUT`s and applies only the latest change's outcome; a failed latest save reverts to the last server-confirmed state.
 - **Verification:** see the REVIEW.md chunk C IMPLEMENTATION entry (full clean run and curl smoke test) and the 08:50 RESOLUTION.
 

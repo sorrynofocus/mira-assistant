@@ -182,6 +182,7 @@ function settingsTree() {
   const regular = el('input', { type: 'radio', name: 'fontSize', value: 'default' });
   const large = el('input', { type: 'radio', name: 'fontSize', value: 'large' });
   const inspector = el('input', { type: 'checkbox', id: 'settings-inspector-default', name: 'inspectorOpenByDefault' });
+  const inspectLinks = el('input', { type: 'checkbox', id: 'settings-inspect-links', name: 'showInspectLinks' });
   const signOut = el('button', { type: 'button', id: 'settings-sign-out' });
   const close = el('button', { type: 'button', id: 'settings-close' });
   const error = el('p', { id: 'settings-error', role: 'alert', hidden: '' });
@@ -194,11 +195,12 @@ function settingsTree() {
     regular,
     large,
     inspector,
+    inspectLinks,
     signOut,
     close,
     error,
   ]);
-  return { dialog, mira, sovereign, system, small, regular, large, inspector, signOut, close, error };
+  return { dialog, mira, sovereign, system, small, regular, large, inspector, inspectLinks, signOut, close, error };
 }
 
 afterEach(() => {
@@ -275,7 +277,7 @@ describe('settings dialog a11y', () => {
 describe('preferences save and revert', () => {
   it('reverts the UI and shows an assertive alert when PUT fails', async () => {
     const controller = new SettingsController();
-    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false };
+    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true };
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -333,19 +335,21 @@ describe('preferences save and revert', () => {
           theme: 'sovereign',
           fontSize: 'large',
           inspectorOpenByDefault: true,
+          showInspectLinks: true,
         }),
         text: async () =>
           JSON.stringify({
             theme: 'sovereign',
             fontSize: 'large',
             inspectorOpenByDefault: true,
+            showInspectLinks: true,
           }),
       }),
     );
     setCsrfToken('csrf-token');
     const announcements: string[] = [];
     const ok = await controller.change(
-      { theme: 'sovereign', fontSize: 'large', inspectorOpenByDefault: true },
+      { theme: 'sovereign', fontSize: 'large', inspectorOpenByDefault: true, showInspectLinks: true },
       {
         showError() {},
         announce(message) {
@@ -359,6 +363,7 @@ describe('preferences save and revert', () => {
       theme: 'sovereign',
       fontSize: 'large',
       inspectorOpenByDefault: true,
+      showInspectLinks: true,
     });
     expect(announcements).toEqual(['Settings saved.']);
   });
@@ -384,7 +389,7 @@ describe('preferences save and revert', () => {
     vi.stubGlobal('fetch', fetchMock);
     setCsrfToken('csrf-token');
     const controller = new SettingsController();
-    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false };
+    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true };
     const announcements: string[] = [];
     const ui = { showError() {}, announce: (m: string) => announcements.push(m), sync() {} };
 
@@ -392,11 +397,11 @@ describe('preferences save and revert', () => {
     const second = controller.change({ theme: 'system' }, ui);
     expect(controller.current.theme).toBe('system'); // optimistic: the last choice shows at once
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1)); // serialized: second PUT waits
-    pending[0]({ theme: 'sovereign', fontSize: 'default', inspectorOpenByDefault: false });
+    pending[0]({ theme: 'sovereign', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true });
     expect(await first).toBe(true); // superseded: its response is not applied
     expect(controller.current.theme).toBe('system');
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-    pending[1]({ theme: 'system', fontSize: 'default', inspectorOpenByDefault: false });
+    pending[1]({ theme: 'system', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true });
     expect(await second).toBe(true);
     expect(controller.current.theme).toBe('system');
     expect(storage.getItem(STORAGE_THEME)).toBe('system');
@@ -407,7 +412,7 @@ describe('preferences save and revert', () => {
     const storage = memoryStorage();
     vi.stubGlobal('localStorage', storage);
     const responses = [
-      { ok: true, status: 200, body: { theme: 'sovereign', fontSize: 'default', inspectorOpenByDefault: false } },
+      { ok: true, status: 200, body: { theme: 'sovereign', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true } },
       { ok: false, status: 500, body: { title: 'Could not save settings.' } },
     ];
     vi.stubGlobal(
@@ -425,7 +430,7 @@ describe('preferences save and revert', () => {
     );
     setCsrfToken('csrf-token');
     const controller = new SettingsController();
-    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false };
+    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true };
     const errors: string[] = [];
     const ui = { showError: (m: string | null) => m && errors.push(m), announce() {}, sync() {} };
 
@@ -438,12 +443,47 @@ describe('preferences save and revert', () => {
     expect(errors.length).toBe(1);
   });
 
+  it('reverts showInspectLinks when the PUT fails', async () => {
+    const controller = new SettingsController();
+    controller.current = { theme: 'mira-dark', fontSize: 'default', inspectorOpenByDefault: false, showInspectLinks: true };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ title: 'Could not save settings.' }),
+        text: async () => '',
+      }),
+    );
+    setCsrfToken('csrf-token');
+    const { dialog, inspectLinks, error } = settingsTree();
+    inspectLinks.checked = true;
+    const ok = await controller.change(
+      { showInspectLinks: false },
+      {
+        showError(message) {
+          showSettingsAlert(error as unknown as HTMLElement, message);
+        },
+        announce() {},
+        sync(preferences) {
+          syncSettingsControls(dialog as unknown as ParentNode, preferences);
+        },
+      },
+    );
+    expect(ok).toBe(false);
+    expect(controller.current.showInspectLinks).toBe(true);
+    expect(inspectLinks.checked).toBe(true);
+    expect(error.hidden).toBe(false);
+  });
+
   it('starts from the documented defaults', () => {
     expect(new SettingsController().current).toEqual(DEFAULT_PREFERENCES);
     expect(DEFAULT_PREFERENCES).toEqual({
       theme: 'mira-dark',
       fontSize: 'default',
       inspectorOpenByDefault: false,
+      showInspectLinks: true,
     });
   });
 });

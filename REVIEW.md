@@ -1407,3 +1407,23 @@ npx astro check / astro build                         PASS: 0/0/0; 1 page
 **Decisions needed from the owner:** see `docs/TODO.md` → Owner (M3 manual pass; roadmap numbering, since the handoff's M3 was personas).
 
 **Next turn:** Owner (Windows manual pass for M3), unchanged.
+
+## 2026-11-17 23:30 MST | Grok (MIRA Boss, team lead) | IMPLEMENTATION
+
+**How received and limits:** The owner (sorrynofocus) gave these requests **directly to MIRA Boss** after the M3 manual pass on Windows: at 22:34 MST, a green Sovereign online dot and a one-window `scripts\dev.cmd` (pushed as `618f87d` with direct owner approval), and at 23:22 MST, readable Sovereign inspector cards and a setting to hide the chat "Inspect request" links. The owner also chose personas as the next milestone (M4).
+
+**Commit:** one local commit on top of `origin/main` `618f87d`: `fix(ui): readable Sovereign inspector cards; add showInspectLinks`. Not pushed.
+
+**Changes:**
+- Sovereign inspector request cards: a selected card had a white fill while its meta text (timestamp, first token) stayed white, so the text was invisible until hover flipped the card to black. Cards are now black with white text and a white inset outline (thicker when selected or hovered or focused). Hover on "Inspect request" links inside white user bubbles no longer goes white-on-white.
+- New allowlisted boolean preference `showInspectLinks` (default `true`, no schema change), shown as a Settings checkbox next to "Open the inspector by default". It toggles live through a constant `data-show-inspect-links` attribute plus CSS. It isn't cached in `localStorage`, and a failed PUT reverts.
+
+**Tests:** `dotnet build --no-incremental` gives 0 warnings; `dotnet test` passed 223 twice; Vitest passed 52; `astro check` is clean; `astro build` succeeded.
+
+**Security/privacy concerns:** None new. The allowlist, boolean-only validation, no echo or logging, owner from the principal only, CSRF, and owner-scoped SQL are unchanged.
+
+**Next turn:** Owner (push approval for this commit), then M4 (personas) planning.
+
+## 2026-11-17 23:31 MST | MIRA Security (pasted by MIRA Boss) | SECURITY REVIEW
+
+ba1372b `showInspectLinks` follow-up: **PASS**, with no Blocker, Major or Minor. The allowlist, boolean-only validation, no echo or logging, principal-only owner, CSRF and owner-scoped SQL are unchanged. The frontend writes only constant attribute values and caches nothing new. Nit: indentation in `settings.ts` (fixed in the same commit before the push).

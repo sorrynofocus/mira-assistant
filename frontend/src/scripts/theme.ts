@@ -16,12 +16,14 @@ export interface AppearancePreferences {
   theme: ThemeValue;
   fontSize: FontSizeValue;
   inspectorOpenByDefault: boolean;
+  showInspectLinks: boolean; // not cached; default true
 }
 
 export const DEFAULT_PREFERENCES: AppearancePreferences = {
   theme: DEFAULT_THEME,
   fontSize: DEFAULT_FONT_SIZE,
   inspectorOpenByDefault: false,
+  showInspectLinks: true,
 };
 
 export function isThemeValue(value: unknown): value is ThemeValue {
@@ -138,6 +140,8 @@ export function applyPreferences(
     ...target,
     media: preferences.theme === 'system' ? (target.media ?? media) : target.media,
   });
+  const root = target.root ?? (typeof document !== 'undefined' ? document.documentElement : null);
+  root?.setAttribute('data-show-inspect-links', preferences.showInspectLinks ? 'true' : 'false');
   cacheAppearance(preferences.theme, preferences.fontSize, storage);
   watchSystemTheme(() => preferences.theme, () => preferences.fontSize, media, target);
   return resolved;

@@ -43,6 +43,19 @@ public abstract class PreferenceStoreContractTests : IAsyncLifetime
         Assert.Equal(expected, await Store.GetAsync(owner));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShowInspectLinksRoundTrips(bool value)
+    {
+        var owner = await CreateOwnerAsync();
+        var update = new PreferenceUpdate(ShowInspectLinks: value);
+        var expected = UserPreferences.Default.Apply(update);
+
+        Assert.Equal(expected, await Store.UpdateAsync(owner, update));
+        Assert.Equal(expected, await Store.GetAsync(owner));
+    }
+
     [Fact]
     public async Task PartialUpdatesKeepOtherKeysAndOverwrite()
     {
@@ -50,8 +63,9 @@ public abstract class PreferenceStoreContractTests : IAsyncLifetime
         await Store.UpdateAsync(owner, new PreferenceUpdate(ThemeValues.Sovereign, FontSizeValues.Large, true));
         await Store.UpdateAsync(owner, new PreferenceUpdate(FontSize: FontSizeValues.Small));
         await Store.UpdateAsync(owner, new PreferenceUpdate(InspectorOpenByDefault: false));
+        await Store.UpdateAsync(owner, new PreferenceUpdate(ShowInspectLinks: false));
 
-        Assert.Equal(new UserPreferences(ThemeValues.Sovereign, FontSizeValues.Small, false), await Store.GetAsync(owner));
+        Assert.Equal(new UserPreferences(ThemeValues.Sovereign, FontSizeValues.Small, false, false), await Store.GetAsync(owner));
     }
 
     [Fact]
@@ -63,7 +77,7 @@ public abstract class PreferenceStoreContractTests : IAsyncLifetime
 
         Assert.Equal(UserPreferences.Default, await Store.GetAsync(bob));
         await Store.UpdateAsync(bob, new PreferenceUpdate(Theme: ThemeValues.System));
-        Assert.Equal(new UserPreferences(ThemeValues.Sovereign, FontSizeValues.Large, true), await Store.GetAsync(alice));
+        Assert.Equal(new UserPreferences(ThemeValues.Sovereign, FontSizeValues.Large, true, true), await Store.GetAsync(alice));
     }
 
     [Fact]
@@ -165,7 +179,7 @@ public sealed class SqlitePreferenceStoreTests : PreferenceStoreContractTests
         SqliteConnection.ClearAllPools();
 
         var reopened = new SqliteUserPreferenceStore(new MiraDatabase(_options), Time);
-        Assert.Equal(new UserPreferences(ThemeValues.System, FontSizeValues.Large, true), await reopened.GetAsync(owner));
+        Assert.Equal(new UserPreferences(ThemeValues.System, FontSizeValues.Large, true, true), await reopened.GetAsync(owner));
 
         await using var connection = await _database.OpenAsync();
         await using var command = connection.CreateCommand();
@@ -189,7 +203,7 @@ public sealed class SqlitePreferenceStoreTests : PreferenceStoreContractTests
     {
         var owner = await CreateOwnerAsync();
         await using var connection = await _database.OpenAsync();
-        foreach (var (key, value) in new[] { ("theme", "neon"), ("fontSize", "LARGE"), ("inspectorOpenByDefault", "yes"), ("unknown", "x") })
+        foreach (var (key, value) in new[] { ("theme", "neon"), ("fontSize", "LARGE"), ("inspectorOpenByDefault", "yes"), ("showInspectLinks", "yes"), ("unknown", "x") })
         {
             await using var insert = connection.CreateCommand();
             insert.CommandText = "INSERT INTO UserPreferences (OwnerUserId, Key, Value, UpdatedAt) VALUES ($owner, $key, $value, '2026-11-17T09:00:00.0000000Z');";

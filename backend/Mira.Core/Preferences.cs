@@ -9,8 +9,9 @@ public static class PreferenceKeys
     public const string Theme = "theme";
     public const string FontSize = "fontSize";
     public const string InspectorOpenByDefault = "inspectorOpenByDefault";
+    public const string ShowInspectLinks = "showInspectLinks";
 
-    public static readonly IReadOnlyList<string> All = [Theme, FontSize, InspectorOpenByDefault];
+    public static readonly IReadOnlyList<string> All = [Theme, FontSize, InspectorOpenByDefault, ShowInspectLinks];
 }
 
 public static class ThemeValues
@@ -32,10 +33,10 @@ public static class FontSizeValues
 }
 
 // The full preferences object. GET returns it; PUT returns it after the update. JSON (web defaults, camelCase):
-// { "theme": "mira-dark", "fontSize": "default", "inspectorOpenByDefault": false }
-public sealed record UserPreferences(string Theme, string FontSize, bool InspectorOpenByDefault)
+// { "theme": "mira-dark", "fontSize": "default", "inspectorOpenByDefault": false, "showInspectLinks": true }
+public sealed record UserPreferences(string Theme, string FontSize, bool InspectorOpenByDefault, bool ShowInspectLinks)
 {
-    public static UserPreferences Default { get; } = new(ThemeValues.MiraDark, FontSizeValues.Default, false);
+    public static UserPreferences Default { get; } = new(ThemeValues.MiraDark, FontSizeValues.Default, false, true);
 
     // Builds the object from stored key/value rows. Unknown keys and values not on the allowlist are ignored (default used).
     public static UserPreferences FromStored(IReadOnlyDictionary<string, string> rows)
@@ -44,17 +45,25 @@ public sealed record UserPreferences(string Theme, string FontSize, bool Inspect
         var theme = rows.TryGetValue(PreferenceKeys.Theme, out var t) && ThemeValues.All.Contains(t) ? t : Default.Theme;
         var fontSize = rows.TryGetValue(PreferenceKeys.FontSize, out var f) && FontSizeValues.All.Contains(f) ? f : Default.FontSize;
         var inspector = rows.TryGetValue(PreferenceKeys.InspectorOpenByDefault, out var i) && bool.TryParse(i, out var b) ? b : Default.InspectorOpenByDefault;
-        return new UserPreferences(theme, fontSize, inspector);
+        var inspectLinks = rows.TryGetValue(PreferenceKeys.ShowInspectLinks, out var s) && bool.TryParse(s, out var l) ? l : Default.ShowInspectLinks;
+        return new UserPreferences(theme, fontSize, inspector, inspectLinks);
     }
 
     public UserPreferences Apply(PreferenceUpdate update) => new(
-        update.Theme ?? Theme, update.FontSize ?? FontSize, update.InspectorOpenByDefault ?? InspectorOpenByDefault);
+        update.Theme ?? Theme,
+        update.FontSize ?? FontSize,
+        update.InspectorOpenByDefault ?? InspectorOpenByDefault,
+        update.ShowInspectLinks ?? ShowInspectLinks);
 }
 
 // A validated partial update: null means "leave unchanged".
-public sealed record PreferenceUpdate(string? Theme = null, string? FontSize = null, bool? InspectorOpenByDefault = null)
+public sealed record PreferenceUpdate(
+    string? Theme = null,
+    string? FontSize = null,
+    bool? InspectorOpenByDefault = null,
+    bool? ShowInspectLinks = null)
 {
-    public bool IsEmpty => Theme is null && FontSize is null && InspectorOpenByDefault is null;
+    public bool IsEmpty => Theme is null && FontSize is null && InspectorOpenByDefault is null && ShowInspectLinks is null;
 
     // The rows to upsert, with stored string values ("true"/"false" for booleans).
     public IReadOnlyDictionary<string, string> ToStored()
@@ -63,6 +72,7 @@ public sealed record PreferenceUpdate(string? Theme = null, string? FontSize = n
         if (Theme is not null) rows[PreferenceKeys.Theme] = Theme;
         if (FontSize is not null) rows[PreferenceKeys.FontSize] = FontSize;
         if (InspectorOpenByDefault is { } inspector) rows[PreferenceKeys.InspectorOpenByDefault] = inspector ? "true" : "false";
+        if (ShowInspectLinks is { } inspectLinks) rows[PreferenceKeys.ShowInspectLinks] = inspectLinks ? "true" : "false";
         return rows;
     }
 }
@@ -84,7 +94,7 @@ public static class PreferenceRules
         }
 
         string? theme = null, fontSize = null;
-        bool? inspector = null;
+        bool? inspector = null, showInspectLinks = null;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var property in body.EnumerateObject())
         {
@@ -114,15 +124,18 @@ public static class PreferenceRules
                 case PreferenceKeys.InspectorOpenByDefault when value.ValueKind is JsonValueKind.True or JsonValueKind.False:
                     inspector = value.GetBoolean();
                     break;
+                case PreferenceKeys.ShowInspectLinks when value.ValueKind is JsonValueKind.True or JsonValueKind.False:
+                    showInspectLinks = value.GetBoolean();
+                    break;
                 default:
-                    error = new PreferenceValidationError(key, key == PreferenceKeys.InspectorOpenByDefault
+                    error = new PreferenceValidationError(key, IsBooleanKey(key)
                         ? "Must be true or false."
                         : $"Must be one of: {string.Join(", ", key == PreferenceKeys.Theme ? ThemeValues.All : FontSizeValues.All)}.");
                     return false;
             }
         }
 
-        update = new PreferenceUpdate(theme, fontSize, inspector);
+        update = new PreferenceUpdate(theme, fontSize, inspector, showInspectLinks);
         if (update.IsEmpty)
         {
             error = new PreferenceValidationError("", "At least one preference is required.");
@@ -131,6 +144,9 @@ public static class PreferenceRules
 
         return true;
     }
+
+    private static bool IsBooleanKey(string key) =>
+        key is PreferenceKeys.InspectorOpenByDefault or PreferenceKeys.ShowInspectLinks;
 }
 
 // Owner-scoped storage. The owner ID always comes from the authenticated principal, never from the request.

@@ -12,7 +12,7 @@ public sealed class PreferenceContractTests
     public void DefaultsAndJsonShapeMatchTheContract()
     {
         var json = JsonSerializer.Serialize(UserPreferences.Default, JsonSerializerOptions.Web);
-        Assert.Equal("""{"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false}""", json);
+        Assert.Equal("""{"theme":"mira-dark","fontSize":"default","inspectorOpenByDefault":false,"showInspectLinks":true}""", json);
     }
 
     [Theory]
@@ -20,6 +20,7 @@ public sealed class PreferenceContractTests
     [InlineData("""{"theme":"system","fontSize":"large","inspectorOpenByDefault":true}""")]
     [InlineData("""{"fontSize":"small"}""")]
     [InlineData("""{"inspectorOpenByDefault":false}""")]
+    [InlineData("""{"showInspectLinks":false}""")]
     public void ValidUpdatesParse(string body)
     {
         Assert.True(PreferenceRules.TryParseUpdate(Json(body), out var update, out var error));
@@ -34,6 +35,7 @@ public sealed class PreferenceContractTests
     [InlineData("""{"theme":null}""", "theme")]
     [InlineData("""{"fontSize":"huge"}""", "fontSize")]
     [InlineData("""{"inspectorOpenByDefault":"true"}""", "inspectorOpenByDefault")]
+    [InlineData("""{"showInspectLinks":"false"}""", "showInspectLinks")]
     [InlineData("""{"ownerUserId":"x"}""", "")]
     [InlineData("""{"theme":"sovereign","theme":"mira-dark"}""", "theme")]
     [InlineData("""{}""", "")]
@@ -81,6 +83,10 @@ public sealed class PreferenceContractTests
         var after = UserPreferences.Default.Apply(update);
         Assert.Equal(UserPreferences.Default with { InspectorOpenByDefault = true }, after);
         Assert.Equal(new Dictionary<string, string> { ["inspectorOpenByDefault"] = "true" }, update.ToStored());
+
+        Assert.True(PreferenceRules.TryParseUpdate(Json("""{"showInspectLinks":false}"""), out var linksUpdate, out _));
+        Assert.Equal(UserPreferences.Default with { ShowInspectLinks = false }, UserPreferences.Default.Apply(linksUpdate));
+        Assert.Equal(new Dictionary<string, string> { ["showInspectLinks"] = "false" }, linksUpdate.ToStored());
     }
 
     [Fact]
@@ -88,9 +94,9 @@ public sealed class PreferenceContractTests
     {
         var prefs = UserPreferences.FromStored(new Dictionary<string, string>
         {
-            ["theme"] = "sovereign", ["fontSize"] = "gigantic", ["inspectorOpenByDefault"] = "yes", ["legacy"] = "x"
+            ["theme"] = "sovereign", ["fontSize"] = "gigantic", ["inspectorOpenByDefault"] = "yes", ["showInspectLinks"] = "yes", ["legacy"] = "x"
         });
-        Assert.Equal(new UserPreferences("sovereign", "default", false), prefs);
+        Assert.Equal(new UserPreferences("sovereign", "default", false, true), prefs);
         Assert.Equal(UserPreferences.Default, UserPreferences.FromStored(new Dictionary<string, string>()));
     }
 }
