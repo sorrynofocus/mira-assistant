@@ -1,6 +1,6 @@
 # M4: persona system
 
-Status: **planned; MIRA Reviewer's 00:10 MST re-check is PASS (no open Blocker or Major; Majors 1–2 closed). Chunk 0 may start.** The owner chose personas as M4 on 2026-11-17 at 23:22 MST, confirmed all six recommended defaults at 23:39 MST, and answered the plan-review questions on 2026-11-18 at 00:05 MST, all directly to MIRA Boss. MIRA Security's plan threat model (23:43) is **PASS** with Minors folded in below.
+Status: **planned; chunk 0 contracts landed. A and B may start in parallel.** MIRA Reviewer's 00:10 MST re-check is PASS (no open Blocker or Major; Majors 1–2 closed). The owner chose personas as M4 on 2026-11-17 at 23:22 MST, confirmed all six recommended defaults at 23:39 MST, and answered the plan-review questions on 2026-11-18 at 00:05 MST, all directly to MIRA Boss. MIRA Security's plan threat model (23:43) is **PASS** with Minors folded in below.
 
 Constraints (AGENTS.md): Astro static + vanilla TypeScript, no new dependencies or paid services; .NET 10 Minimal APIs; plain SQLite with the hand-written migration runner (ADR 0002); API bound to 127.0.0.1:5080; default-deny auth and governance; CSRF on unsafe methods; owner ID from the principal only; parameterized SQL; render user data with `textContent` only. Persistent persona edits by *development agents* need the human owner's direct approval. A persona must never weaken governance.
 
@@ -138,7 +138,7 @@ Threats and invariants (plan review 23:43, folded here):
 
 ## 7. Chunks and file ownership
 
-One owner per file. If this file and the M4 INTENT / RESOLUTION in `REVIEW.md` disagree, the RESOLUTION wins; ask MIRA Boss. Chunk 0 may start (MIRA Reviewer's 00:10 MST re-check is PASS, no open Blocker or Major). A and B then run in parallel against the frozen contract.
+One owner per file. If this file and the M4 INTENT / RESOLUTION in `REVIEW.md` disagree, the RESOLUTION wins; ask MIRA Boss. Chunk 0 is done (MIRA Reviewer's 00:10 MST re-check is PASS, no open Blocker or Major). A and B run in parallel against the frozen contract.
 
 | Step | Owner | Files (create or edit) | Depends on |
 |---|---|---|---|

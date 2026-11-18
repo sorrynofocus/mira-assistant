@@ -132,12 +132,14 @@ public sealed class ConversationDeletedDuringTurnTests
     {
         public Task<IReadOnlyList<ConversationSummary>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken cancellationToken = default) =>
             inner.ListAsync(ownerUserId, skip, take, cancellationToken);
-        public Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default) =>
-            inner.CreateAsync(ownerUserId, title, cancellationToken);
+        public Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, Guid personaId, CancellationToken cancellationToken = default) =>
+            inner.CreateAsync(ownerUserId, title, personaId, cancellationToken);
         public Task<ConversationSnapshot?> GetAsync(Guid ownerUserId, Guid conversationId, CancellationToken cancellationToken = default) =>
             inner.GetAsync(ownerUserId, conversationId, cancellationToken);
-        public Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
-            inner.GetMostRecentOrCreateAsync(ownerUserId, cancellationToken);
+        public Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, Guid personaIdForNew, CancellationToken cancellationToken = default) =>
+            inner.GetMostRecentOrCreateAsync(ownerUserId, personaIdForNew, cancellationToken);
+        public Task<bool> SetPersonaAsync(Guid ownerUserId, Guid conversationId, Guid personaId, CancellationToken cancellationToken = default) =>
+            inner.SetPersonaAsync(ownerUserId, conversationId, personaId, cancellationToken);
         public Task<bool> RenameAsync(Guid ownerUserId, Guid conversationId, string? title, CancellationToken cancellationToken = default) =>
             inner.RenameAsync(ownerUserId, conversationId, title, cancellationToken);
         public Task<bool> DeleteAsync(Guid ownerUserId, Guid conversationId, CancellationToken cancellationToken = default) =>

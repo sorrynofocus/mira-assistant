@@ -47,7 +47,9 @@ public sealed partial class PipelineRedactor : IPipelineRedactor
             DeltaCount: NonNegative(data.DeltaCount),
             FirstTokenMs: NonNegative(data.FirstTokenMs),
             TotalMs: NonNegative(data.TotalMs),
-            ErrorCode: data.ErrorCode is { } code && PipelineErrorCodes.All.Contains(code) ? code : null);
+            ErrorCode: data.ErrorCode is { } code && PipelineErrorCodes.All.Contains(code) ? code : null,
+            PersonaId: data.PersonaId is { } personaId && personaId != Guid.Empty ? personaId : null,
+            PersonaVersion: data.PersonaVersion is > 0 ? data.PersonaVersion : null);
     }
 
     private static int? NonNegative(int? value) => value is >= 0 ? value : null;

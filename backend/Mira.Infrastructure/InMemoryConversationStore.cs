@@ -26,13 +26,17 @@ public sealed class InMemoryConversationStore(TimeProvider time) : IConversation
         }
     }
 
-    public Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default)
+    public Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default) =>
+        CreateAsync(ownerUserId, title, PersonaIds.BuiltInMira, cancellationToken);
+
+    public Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, Guid personaId, CancellationToken cancellationToken = default)
     {
         RequireOwner(ownerUserId);
+        RequirePersona(personaId);
         var normalized = ConversationLimits.NormalizeTitle(title);
         lock (_gate)
         {
-            return Task.FromResult(Summary(Add(ownerUserId, normalized)));
+            return Task.FromResult(Summary(Add(ownerUserId, normalized, personaId)));
         }
     }
 
@@ -45,14 +49,31 @@ public sealed class InMemoryConversationStore(TimeProvider time) : IConversation
         }
     }
 
-    public Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default)
+    public Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
+        GetMostRecentOrCreateAsync(ownerUserId, PersonaIds.BuiltInMira, cancellationToken);
+
+    public Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, Guid personaIdForNew, CancellationToken cancellationToken = default)
     {
         RequireOwner(ownerUserId);
+        RequirePersona(personaIdForNew);
         lock (_gate)
         {
             var conversation = Owned(ownerUserId).OrderByDescending(c => c.UpdatedAt).ThenBy(c => c.Id).FirstOrDefault()
-                ?? Add(ownerUserId, null);
+                ?? Add(ownerUserId, null, personaIdForNew);
             return Task.FromResult(Snapshot(conversation));
+        }
+    }
+
+    public Task<bool> SetPersonaAsync(Guid ownerUserId, Guid conversationId, Guid personaId, CancellationToken cancellationToken = default)
+    {
+        RequireOwner(ownerUserId);
+        RequirePersona(personaId);
+        lock (_gate)
+        {
+            if (Find(ownerUserId, conversationId) is not { } c) return Task.FromResult(false);
+            c.PersonaId = personaId;
+            c.UpdatedAt = time.GetUtcNow();
+            return Task.FromResult(true);
         }
     }
 
@@ -135,10 +156,15 @@ public sealed class InMemoryConversationStore(TimeProvider time) : IConversation
     }
 
     // Callers hold _gate.
-    private Conversation Add(Guid ownerUserId, string? title)
+    private Conversation Add(Guid ownerUserId, string? title, Guid personaId)
     {
         var now = time.GetUtcNow();
-        var conversation = new Conversation(Guid.NewGuid(), ownerUserId, now) { Title = title, UpdatedAt = now };
+        var conversation = new Conversation(Guid.NewGuid(), ownerUserId, now)
+        {
+            Title = title,
+            UpdatedAt = now,
+            PersonaId = personaId
+        };
         _conversations.Add(conversation.Id, conversation);
         return conversation;
     }
@@ -148,14 +174,19 @@ public sealed class InMemoryConversationStore(TimeProvider time) : IConversation
 
     private IEnumerable<Conversation> Owned(Guid ownerUserId) => _conversations.Values.Where(c => c.OwnerUserId == ownerUserId);
 
-    private static ConversationSummary Summary(Conversation c) => new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt);
+    private static ConversationSummary Summary(Conversation c) => new(c.Id, c.Title, c.CreatedAt, c.UpdatedAt, c.PersonaId);
 
     private static ConversationSnapshot Snapshot(Conversation c) =>
-        new(c.Id, c.OwnerUserId, c.Title, c.CreatedAt, c.UpdatedAt, c.Messages.ToArray());
+        new(c.Id, c.OwnerUserId, c.Title, c.CreatedAt, c.UpdatedAt, c.Messages.ToArray(), c.PersonaId);
 
     private static void RequireOwner(Guid ownerUserId)
     {
         if (ownerUserId == Guid.Empty) throw new ArgumentException("An authenticated owner is required.", nameof(ownerUserId));
+    }
+
+    private static void RequirePersona(Guid personaId)
+    {
+        if (personaId == Guid.Empty) throw new ArgumentException("A persona id is required.", nameof(personaId));
     }
 
     private sealed class Conversation(Guid id, Guid ownerUserId, DateTimeOffset createdAt)
@@ -165,6 +196,7 @@ public sealed class InMemoryConversationStore(TimeProvider time) : IConversation
         public DateTimeOffset CreatedAt { get; } = createdAt;
         public string? Title { get; set; }
         public DateTimeOffset UpdatedAt { get; set; }
+        public Guid PersonaId { get; set; } = PersonaIds.BuiltInMira;
         public List<ConversationMessage> Messages { get; } = [];
     }
 }

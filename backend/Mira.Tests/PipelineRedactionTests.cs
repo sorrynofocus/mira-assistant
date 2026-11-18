@@ -110,7 +110,9 @@ public sealed class PipelineRedactionTests
             ["DeltaCount"] = typeof(int?),
             ["FirstTokenMs"] = typeof(long?),
             ["TotalMs"] = typeof(long?),
-            ["ErrorCode"] = typeof(string)
+            ["ErrorCode"] = typeof(string),
+            ["PersonaId"] = typeof(Guid?),
+            ["PersonaVersion"] = typeof(int?)
         };
         var actual = typeof(PipelineEventData)
             .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -118,6 +120,20 @@ public sealed class PipelineRedactionTests
             .ToDictionary(p => p.Name, p => p.PropertyType);
         Assert.Equal(expected.OrderBy(p => p.Key), actual.OrderBy(p => p.Key));
         Assert.Empty(typeof(PipelineEventData).GetFields(BindingFlags.Public | BindingFlags.Instance));
+    }
+
+    [Fact]
+    public void PersonaIdAndVersionAreKeptAndEmptyOrNonPositiveDropped()
+    {
+        var personaId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var kept = new PipelineEventData(PersonaId: personaId, PersonaVersion: 3);
+        Assert.Equal(kept, _redactor.Redact(PipelineEventTypes.RequestStarted, kept));
+        var dropped = _redactor.Redact(PipelineEventTypes.Completed, new PipelineEventData(PersonaId: Guid.Empty, PersonaVersion: 0));
+        Assert.Null(dropped.PersonaId);
+        Assert.Null(dropped.PersonaVersion);
+        Assert.Null(_redactor.Redact(PipelineEventTypes.Completed, new PipelineEventData(PersonaVersion: -1)).PersonaVersion);
+        Assert.DoesNotContain(typeof(PipelineEventData).GetProperties().Select(p => p.Name), name =>
+            name is "Name" or "Description" or "Markdown" or "Body" or "PersonaName");
     }
 
     [Fact]

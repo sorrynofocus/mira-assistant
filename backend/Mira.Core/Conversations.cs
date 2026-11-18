@@ -1,5 +1,7 @@
 namespace Mira.Core;
 
+// Persisted messages and prompt history turns only. There is no System value: the instruction channel is
+// ChatRequest.Instructions, so a client cannot inject a system role through stored history.
 public enum ChatRole
 {
     User,
@@ -16,7 +18,8 @@ public enum MessageStatus
 
 public sealed record ChatTurn(ChatRole Role, string Content);
 
-public sealed record ChatRequest(IReadOnlyList<ChatTurn> Messages);
+// Instructions is the system/instruction channel (PersonaPrompt.Build). It is never a stored message.
+public sealed record ChatRequest(IReadOnlyList<ChatTurn> Messages, string? Instructions = null);
 
 // RequestId correlates a message with the pipeline events of the chat turn that wrote it (32 lowercase hex chars, Guid "N" format).
 public sealed record ConversationMessage(
@@ -28,7 +31,7 @@ public sealed record ConversationMessage(
     string? ModelId,
     string? RequestId);
 
-public sealed record ConversationSummary(Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+public sealed record ConversationSummary(Guid Id, string? Title, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, Guid PersonaId);
 
 public sealed record ConversationSnapshot(
     Guid Id,
@@ -36,7 +39,8 @@ public sealed record ConversationSnapshot(
     string? Title,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<ConversationMessage> Messages);
+    IReadOnlyList<ConversationMessage> Messages,
+    Guid PersonaId);
 
 public static class ConversationLimits
 {
@@ -67,14 +71,24 @@ public interface IConversationStore
     // Newest activity first (UpdatedAt descending, then Id). take must be 1..ConversationLimits.MaxPageSize; skip >= 0.
     Task<IReadOnlyList<ConversationSummary>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken cancellationToken = default);
 
-    Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default);
+    // Pins the new conversation to personaId (a concrete id, never "follow the default"). personaId must not be Guid.Empty.
+    Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, Guid personaId, CancellationToken cancellationToken = default);
+
+    // Compatibility default: pins to the built-in MIRA. Chunk A callers pass a copy of the owner's default instead.
+    Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default) =>
+        CreateAsync(ownerUserId, title, PersonaIds.BuiltInMira, cancellationToken);
 
     // Messages oldest first. Null when missing or not owned.
     Task<ConversationSnapshot?> GetAsync(Guid ownerUserId, Guid conversationId, CancellationToken cancellationToken = default);
 
     // M1 compatibility (GET /api/conversations/current and chat/stream without a conversationId):
     // the owner's most recently updated conversation, or a new untitled one if the owner has none.
-    Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
+    // personaIdForNew is used only when the owner has no conversations yet; existing rows keep their stored pin.
+    Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, Guid personaIdForNew, CancellationToken cancellationToken = default);
+
+    // Compatibility default: new conversations are pinned to the built-in MIRA.
+    Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
+        GetMostRecentOrCreateAsync(ownerUserId, PersonaIds.BuiltInMira, cancellationToken);
 
     // False when missing or not owned. Title rules: ConversationLimits.NormalizeTitle. Bumps UpdatedAt.
     Task<bool> RenameAsync(Guid ownerUserId, Guid conversationId, string? title, CancellationToken cancellationToken = default);
@@ -92,5 +106,11 @@ public interface IConversationStore
     Task FinishAssistantMessageAsync(Guid ownerUserId, Guid conversationId, Guid messageId, string content, MessageStatus status, CancellationToken cancellationToken = default);
 
     // Turns sent to the model: user messages and completed assistant replies, oldest first. Empty when missing or not owned.
+    // Never includes an instruction/system turn; callers put PersonaPrompt.Build into ChatRequest.Instructions.
     Task<IReadOnlyList<ChatTurn>> GetPromptTurnsAsync(Guid ownerUserId, Guid conversationId, CancellationToken cancellationToken = default);
+
+    // Soft pin: stores personaId as-is (no FK). False when the conversation is missing or not owned.
+    // personaId must not be Guid.Empty. This method does not verify that the persona still exists.
+    Task<bool> SetPersonaAsync(Guid ownerUserId, Guid conversationId, Guid personaId, CancellationToken cancellationToken = default);
 }
+

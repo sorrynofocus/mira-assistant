@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) planned;** MIRA Reviewer's 00:10 MST re-check is **PASS** (no open Blocker or Major; Majors 1–2 closed). Chunk 0 may start. Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
-- **Working branch/commit:** `main` is one local docs commit ahead of `origin/main` = `2c6751b` (M4 plan, amended after the 00:10 VERIFICATION); not pushed; any push needs fresh, direct owner approval
-- **Last verified build:** 2026-11-17, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), at `2c6751b`: dotnet build --no-incremental 0 warnings/0 errors, 223/223 xUnit (twice), 52/52 Vitest, Astro check 0/0/0, build 1 page. Requires Node >=22.23.4
+- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) planned;** plan re-check **PASS**; chunk 0 contracts landed (this commit). A and B may start in parallel. Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
+- **Working branch/commit:** `main` is two local commits ahead of `origin/main` = `2c6751b` (M4 plan + chunk 0 contracts); not pushed; any push needs fresh, direct owner approval
+- **Last verified build:** 2026-11-18 00:17 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), chunk 0: `dotnet build --no-incremental` 0 warnings/0 errors, 249/249 xUnit (twice). Frontend was untouched, so Vitest/Astro were not rerun. Requires Node >=22.23.4
 - **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 Windows manual pass; roadmap numbering is done; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION)
 - **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M4 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16)
-- **Next concrete action:** MIRA Boss implements chunk 0 (persona contracts). The owner's M3 Windows manual pass remains open.
-- **Turn:** MIRA Boss (Implementer lead), implement chunk 0 persona contracts
+- **Next concrete action:** MIRA Backend implements chunk A and MIRA Frontend implements chunk B, in parallel, from worktrees on this chunk 0 commit. The owner's M3 Windows manual pass remains open.
+- **Turn:** MIRA Backend (Implementer), chunk A; and MIRA Frontend (Implementer), chunk B (in parallel)
 
 ---
 
@@ -1620,3 +1620,35 @@ Also state that `POST /api/conversations` *and* the M1 `POST /api/chat/stream` p
 **Security/privacy:** None new.
 
 **Next turn:** Grok team (MIRA Boss). Chunk 0 may start. No push without the owner's direct approval.
+
+## 2026-11-18 00:17 MST | MIRA Boss | IMPLEMENTATION
+
+**Objective:** Implement M4 chunk 0 (frozen Core persona contracts and contract tests) after MIRA Reviewer's 00:10 MST VERIFICATION (PASS, no open Blocker or Major). Acting on a direct owner instruction.
+
+**Branch and commit:** local `main`, this chunk 0 commit, on the amended plan commit. Not pushed.
+
+**Files examined or changed:**
+- `backend/Mira.Core/Personas.cs` (new): `PersonaIds.BuiltInMira`, `PersonaLimits` (including `MaxVersionsPerPersona = 5`), records, `IPersonaStore`, `PersonaRules`, `PersonaPrompt` (`GovernancePreamble` constant, fenced slot, delimiter neutralization, C0/NUL stripping)
+- `backend/Mira.Core/Conversations.cs`: `ChatRequest.Instructions`; `PersonaId` on summary/snapshot and store methods (`CreateAsync`, get-or-create, `SetPersonaAsync`); no `ChatRole.System`
+- `backend/Mira.Core/PipelineEvents.cs`: allowlisted `PersonaId` and `PersonaVersion` only
+- `backend/Mira.Tests/PersonaContractTests.cs` (new)
+- Minimal compile stubs: in-memory conversations pin to `BuiltInMira`; SQLite reports `BuiltInMira` until migration 5; `PipelineRedactor` and the event-field allowlist test; the delete-during-turn test wrapper
+
+**Changes / findings:** Contracts match `docs/M4_PERSONAS.md` §2 and the chunk 0 brief. SQLite and the API/UI were not implemented (chunks A and B). In-memory stores persist a pin; the SQLite store compiles against the new signatures but does not add the column (migration 5 is chunk A).
+
+**Commands run and results:**
+```text
+export PATH=$HOME/.dotnet:$PATH
+unset Mira__/MIRA_ variables
+dotnet build --no-incremental
+0 warnings, 0 errors
+dotnet test  (twice)
+249/249 passed, twice
+```
+Frontend was not run.
+
+**Security/privacy concerns:** none. Prompt assembly is preamble then a fenced, labeled persona slot; injection-style bodies do not change `GovernanceService` decisions; pipeline events still have no name, description or body; validation errors never echo submitted values.
+
+**Decisions needed from the owner:** none. No push.
+
+**Next turn:** MIRA Backend (Implementer), chunk A; and MIRA Frontend (Implementer), chunk B, in parallel. Work in the prepared worktrees; do not push; do not edit `REVIEW.md` or docs (send drafted entries and TODO items to MIRA Boss).

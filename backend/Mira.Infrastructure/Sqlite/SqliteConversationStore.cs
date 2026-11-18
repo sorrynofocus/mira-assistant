@@ -33,11 +33,16 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         return page;
     }
 
-    public async Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default)
+    public Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, CancellationToken cancellationToken = default) =>
+        CreateAsync(ownerUserId, title, PersonaIds.BuiltInMira, cancellationToken);
+
+    public async Task<ConversationSummary> CreateAsync(Guid ownerUserId, string? title, Guid personaId, CancellationToken cancellationToken = default)
     {
         RequireOwner(ownerUserId);
+        RequirePersona(personaId);
         var normalized = ConversationLimits.NormalizeTitle(title);
         await using var connection = await database.OpenAsync(cancellationToken);
+        // Migration 5 (chunk A) persists personaId. Until then the returned pin is the built-in MIRA.
         return await InsertConversationAsync(connection, null, ownerUserId, normalized, cancellationToken);
     }
 
@@ -58,9 +63,14 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         return await SnapshotAsync(connection, null, ownerUserId, summary, cancellationToken);
     }
 
-    public async Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default)
+    public Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, CancellationToken cancellationToken = default) =>
+        GetMostRecentOrCreateAsync(ownerUserId, PersonaIds.BuiltInMira, cancellationToken);
+
+    public async Task<ConversationSnapshot> GetMostRecentOrCreateAsync(Guid ownerUserId, Guid personaIdForNew, CancellationToken cancellationToken = default)
     {
         RequireOwner(ownerUserId);
+        RequirePersona(personaIdForNew);
+        // personaIdForNew is accepted so the interface compiles; migration 5 persists it. New rows currently report BuiltInMira.
         await using var connection = await database.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
         ConversationSummary? summary = null;
@@ -212,11 +222,23 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         return message;
     }
 
+    public async Task<bool> SetPersonaAsync(Guid ownerUserId, Guid conversationId, Guid personaId, CancellationToken cancellationToken = default)
+    {
+        // Migration 5 persists this column. Until then, accept the call so the interface compiles and only check ownership.
+        RequireOwner(ownerUserId);
+        RequirePersona(personaId);
+        await using var connection = await database.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT 1 FROM Conversations WHERE {OwnedConversation} LIMIT 1;";
+        AddScope(command, ownerUserId, conversationId);
+        return await command.ExecuteScalarAsync(cancellationToken) is not null;
+    }
+
     private async Task<ConversationSummary> InsertConversationAsync(
         SqliteConnection connection, SqliteTransaction? transaction, Guid ownerUserId, string? title, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        var summary = new ConversationSummary(Guid.NewGuid(), title, now, now);
+        var summary = new ConversationSummary(Guid.NewGuid(), title, now, now, PersonaIds.BuiltInMira);
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
@@ -235,7 +257,7 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         SqliteConnection connection, SqliteTransaction? transaction, Guid ownerUserId, ConversationSummary summary, CancellationToken cancellationToken)
     {
         var messages = await ReadMessagesAsync(connection, transaction, ownerUserId, summary.Id, cancellationToken);
-        return new ConversationSnapshot(summary.Id, ownerUserId, summary.Title, summary.CreatedAt, summary.UpdatedAt, messages);
+        return new ConversationSnapshot(summary.Id, ownerUserId, summary.Title, summary.CreatedAt, summary.UpdatedAt, messages, summary.PersonaId);
     }
 
     private static async Task<IReadOnlyList<ConversationMessage>> ReadMessagesAsync(
@@ -297,10 +319,16 @@ public sealed class SqliteConversationStore(MiraDatabase database, TimeProvider 
         Guid.Parse(reader.GetString(0)),
         reader.IsDBNull(1) ? null : reader.GetString(1),
         MiraDatabase.ParseTime(reader.GetString(2)),
-        MiraDatabase.ParseTime(reader.GetString(3)));
+        MiraDatabase.ParseTime(reader.GetString(3)),
+        PersonaIds.BuiltInMira);
 
     private static void RequireOwner(Guid ownerUserId)
     {
         if (ownerUserId == Guid.Empty) throw new ArgumentException("An authenticated owner is required.", nameof(ownerUserId));
+    }
+
+    private static void RequirePersona(Guid personaId)
+    {
+        if (personaId == Guid.Empty) throw new ArgumentException("A persona id is required.", nameof(personaId));
     }
 }

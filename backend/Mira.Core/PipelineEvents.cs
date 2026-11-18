@@ -41,7 +41,9 @@ public sealed record PipelineEventData(
     int? DeltaCount = null,
     long? FirstTokenMs = null,
     long? TotalMs = null,
-    string? ErrorCode = null);       // one of PipelineErrorCodes.All
+    string? ErrorCode = null,        // one of PipelineErrorCodes.All
+    Guid? PersonaId = null,          // opaque id only; never a name, description or body
+    int? PersonaVersion = null);
 
 public sealed record PipelineEvent(
     Guid Id,
