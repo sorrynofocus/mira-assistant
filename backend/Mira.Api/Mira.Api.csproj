@@ -11,4 +11,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Mira.Tests" />
+  </ItemGroup>
+
 </Project>

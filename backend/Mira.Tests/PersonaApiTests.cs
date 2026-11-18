@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Mira.Api.Personas;
 using Mira.Core;
@@ -395,6 +396,36 @@ public sealed class PersonaApiTests
         Assert.All(events, e => Assert.False(e.GetProperty("data").TryGetProperty("personaName", out _)));
     }
 
+    [Fact]
+    public async Task OversizedBodyReturnsFixed413WithoutExceptionDetails()
+    {
+        using var factory = new MiraApiFactory();
+        var incoming = new DefaultHttpContext();
+        incoming.Request.ContentType = "application/json";
+        incoming.Request.Body = new ThrowOnReadStream(new BadHttpRequestException("Kestrel should not appear in the response.", StatusCodes.Status413PayloadTooLarge));
+
+        var (document, problem) = await PersonaEndpoints.ReadJsonAsync(incoming, CancellationToken.None);
+        Assert.Null(document);
+        Assert.NotNull(problem);
+
+        var outgoing = new DefaultHttpContext { RequestServices = factory.Services };
+        outgoing.Response.Body = new MemoryStream();
+        await problem!.ExecuteAsync(outgoing);
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, outgoing.Response.StatusCode);
+
+        outgoing.Response.Body.Position = 0;
+        var text = new StreamReader(outgoing.Response.Body).ReadToEnd();
+        using var json = JsonDocument.Parse(text);
+        Assert.Equal(PersonaEndpoints.PayloadTooLargeTitle, json.RootElement.GetProperty("title").GetString());
+        Assert.Equal(413, json.RootElement.GetProperty("status").GetInt32());
+        Assert.False(json.RootElement.TryGetProperty("exception", out _));
+        Assert.False(json.RootElement.TryGetProperty("exceptionDetails", out _));
+        Assert.DoesNotContain("exception.details", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("BadHttpRequestException", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kestrel should not appear", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", text, StringComparison.Ordinal);
+    }
+
     private static int CountOf(string text, string value)
     {
         var count = 0;
@@ -435,6 +466,21 @@ public sealed class PersonaApiTests
 
     private static Task<HttpResponseMessage> PutJsonAsync(HttpClient client, string path, string json) =>
         client.PutAsync(path, new StringContent(json, Encoding.UTF8, "application/json"));
+
+    private sealed class ThrowOnReadStream(Exception exception) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw exception;
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => throw exception;
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
 
     // Records each ChatRequest, then answers like the Mock (persona-aware).
     private sealed class CapturingChatProvider : IPersonaAwareChatProvider

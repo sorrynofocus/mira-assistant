@@ -45,6 +45,7 @@ public sealed record DefaultPersonaResponse(Guid PersonaId);
 public static class PersonaEndpoints
 {
     public const string InvalidJsonTitle = "The request body must be a JSON object.";
+    public const string PayloadTooLargeTitle = "The request body is too large.";
     public const string UnsupportedMediaTypeTitle = "The request body must be JSON (Content-Type: application/json).";
     public const string BuiltInReadOnlyTitle = "The built-in MIRA persona cannot be changed. Copy it to customize.";
     public const string NotFoundTitle = "Persona not found.";
@@ -191,6 +192,11 @@ public static class PersonaEndpoints
         catch (JsonException)
         {
             return (null, Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: InvalidJsonTitle));
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            // Kestrel's 256 KB body limit. Without this, Development shows the exception page with a stack trace.
+            return (null, Results.Problem(statusCode: StatusCodes.Status413PayloadTooLarge, title: PayloadTooLargeTitle));
         }
     }
 

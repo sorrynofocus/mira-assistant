@@ -324,7 +324,7 @@ public sealed class SqlitePersonaStoreTests : PersonaStoreContractTests
         var owner = await CreateOwnerAsync();
         var persona = await Store.CreateAsync(owner, "Jack", null, "body");
 
-        var outcomes = await Task.WhenAll(Enumerable.Range(0, 12).Select(async i =>
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 12).Select(i => Task.Run(async () =>
         {
             try
             {
@@ -334,7 +334,7 @@ public sealed class SqlitePersonaStoreTests : PersonaStoreContractTests
             {
                 return 0;
             }
-        }));
+        })));
 
         var saved = outcomes.Where(v => v > 0).ToArray();
         Assert.Equal(saved.Length, saved.Distinct().Count());
@@ -347,7 +347,7 @@ public sealed class SqlitePersonaStoreTests : PersonaStoreContractTests
     public async Task ConcurrentCreatesNeverExceedTheCap()
     {
         var owner = await CreateOwnerAsync();
-        var outcomes = await Task.WhenAll(Enumerable.Range(0, 30).Select(async i =>
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 30).Select(i => Task.Run(async () =>
         {
             try
             {
@@ -358,7 +358,7 @@ public sealed class SqlitePersonaStoreTests : PersonaStoreContractTests
             {
                 return false;
             }
-        }));
+        })));
 
         Assert.Equal(PersonaLimits.MaxUserPersonas, outcomes.Count(ok => ok));
         await using var connection = await _database.OpenAsync();

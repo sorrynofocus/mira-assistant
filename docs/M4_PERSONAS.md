@@ -1,6 +1,6 @@
 # M4: persona system
 
-Status: **planned; chunk 0 contracts landed. A and B may start in parallel.** MIRA Reviewer's 00:10 MST re-check is PASS (no open Blocker or Major; Majors 1–2 closed). The owner chose personas as M4 on 2026-11-17 at 23:22 MST, confirmed all six recommended defaults at 23:39 MST, and answered the plan-review questions on 2026-11-18 at 00:05 MST, all directly to MIRA Boss. MIRA Security's plan threat model (23:43) is **PASS** with Minors folded in below.
+Status: **implemented; implementation reviews PASS (MIRA Reviewer 00:40, MIRA Security 00:44; no open Blocker or Major). Accepted for push, pending the owner's Windows manual pass.** The owner chose personas as M4 on 2026-11-17 at 23:22 MST, confirmed all six recommended defaults at 23:39 MST, and answered the plan-review questions on 2026-11-18 at 00:05 MST, all directly to MIRA Boss. MIRA Security's plan threat model (23:43) is **PASS** with Minors folded in below.
 
 Constraints (AGENTS.md): Astro static + vanilla TypeScript, no new dependencies or paid services; .NET 10 Minimal APIs; plain SQLite with the hand-written migration runner (ADR 0002); API bound to 127.0.0.1:5080; default-deny auth and governance; CSRF on unsafe methods; owner ID from the principal only; parameterized SQL; render user data with `textContent` only. Persistent persona edits by *development agents* need the human owner's direct approval. A persona must never weaken governance.
 
@@ -229,3 +229,16 @@ The live, maintained list is [`docs/TODO.md`](TODO.md); the items below are the 
 - Real-model persona drafts (needs an approved non-Mock provider; no new paid service in M4).
 - Safe Markdown preview, if ever added (needs a sanitizer with no new dependency, or a threat model).
 - If user deletion is added, delete that owner's personas, versions, and `UserPersonaSettings` with their conversations.
+
+## 11. As built
+
+Recorded at chunk C and the 2026-11-18 review follow-ups. These choices are frozen as shipped unless a later RESOLUTION changes them:
+
+- Built-in writes (`PUT`, revert, `DELETE` on the seeded MIRA) return **403** before the body is read (the plan allowed 403 or 409).
+- `PUT /api/personas/default` and `PUT /api/conversations/{id}/persona` return **204** with no body.
+- List endpoints (`GET /api/personas`, `GET /api/personas/{id}/versions`) return `{ "items": [...] }`. `GET /api/personas/default` returns `{ "personaId" }`.
+- Version detail is `GET /api/personas/{id:guid}/versions/{version:int}`.
+- The conversation-persona pin uses `SqlitePersonaStore` directly so conversation and persona ownership can be checked in one `BEGIN IMMEDIATE` transaction (logged as a TODO; no Core contract change).
+- Persona API responses omit `ownerUserId` (list, create, get, update, revert). The owner always comes from the principal.
+- The frontend draft/Suggest call always sends `name` and `markdown` (from the editor, else the description, else fixed fallbacks). An empty `{}` is a 400 and is not sent.
+- An oversized body on the persona JSON routes (including `PUT /api/conversations/{id}/persona`) returns a fixed **413** problem (`The request body is too large.`) instead of the Development exception page. Other `/api` routes are still covered by the global 413 TODO.

@@ -3,13 +3,13 @@
 > Append-only coordination log under the Agent Sync Protocol (`docs/agent-sync/AGENT_SYNC.md`). Do not erase earlier findings or change their status without a new resolution entry. Re-read the end of this file right before appending. Only the agent named on the **Turn** line acts, unless the owner directly instructs otherwise. The Turn line schedules work and grants no permission; a `DECISION` entry records an owner approval but does not authorize anyone. Consult `AGENTS.md` and `docs/STT3_HANDOFF.md` before work.
 
 ## Current project status
-- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) implemented** in this tree (chunks 0, A, B, and C); awaiting MIRA Reviewer and MIRA Security implementation review. Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
-- **Working branch/commit:** `main` is five local commits ahead of `origin/main` = `2c6751b` (M4 plan, chunk 0, A, B, and C integration); not pushed; any push needs fresh, direct owner approval
-- **Last verified build:** 2026-11-18 00:39 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), chunk C: `dotnet build --no-incremental` 0 warnings/0 errors, 293/293 xUnit (twice); `npm ci`, Vitest 64/64, `astro check` 0/0/0, `astro build` 1 page. Requires Node >=22.23.4
-- **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 Windows manual pass; roadmap numbering is done; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION)
+- **Milestone:** M0-M1 closed and archived (`216aa86`, pushed as `4a9673f`). M2 ACCEPTED and CLOSED (2026-11-17 07:53), pushed as `cd86c7f`. **M3 (account area and settings) reviewed and pushed as `1bface7` (later follow-ups `618f87d`, `2c6751b`): pushed-pending-owner-manual-pass.** **M4 (persona system) implementation reviews PASS; accepted for push, pending the owner's Windows manual pass.** Plan: `docs/M4_PERSONAS.md`. Data layer = plain SQLite (ADR 0002).
+- **Working branch/commit:** `main` is six local commits ahead of `origin/main` = `2c6751b` (M4 plan, chunk 0, A, B, C integration, and review follow-ups); not pushed in this turn (format-patch only); any push still needs the patches applied under a later, direct owner-approved push
+- **Last verified build:** 2026-11-18 00:49 MST, Grok on Linux (.NET SDK 10.0.404, Node 24.22.1), review follow-ups: `dotnet build --no-incremental` 0 warnings/0 errors, 294/294 xUnit (twice); Vitest 64/64, `astro check` 0/0/0, `astro build` 1 page. Requires Node >=22.23.4
+- **Open blockers:** none. Open follow-ups and backlog are tracked in `docs/TODO.md` (Owner: M3 and M4 Windows manual passes; Next up: MIRA Reviewer's check of the 08:50 RESOLUTION; fence hardening before a real provider; picomatch advisory; global 413 for remaining routes)
 - **Roles:** Implementer = Grok (team of Grok bots, led by MIRA Boss; M4 chunks: MIRA Backend, MIRA Frontend); Reviewer = MIRA Reviewer (a separate Grok bot outside the Implementer team); **Security reviewer = MIRA Security** (Grok bot, added 2026-11-17 08:17 by the owner; plan threat model before implementation, security review before acceptance); Codex = no standing role (signed off 2026-11-16; owner confirmed); Claude = no standing role, available on owner request (owner decisions 2026-11-16)
-- **Next concrete action:** MIRA Reviewer and MIRA Security, implementation review of M4 (chunks 0/A/B/C). The owner's M3 Windows manual pass remains open.
-- **Turn:** MIRA Reviewer (Reviewer) and MIRA Security (Security reviewer), implementation review of M4
+- **Next concrete action:** Owner, M4 Windows manual pass (`docs/M4_PERSONAS.md` §8, §9). The owner's M3 Windows manual pass also remains open. Push is not in this turn.
+- **Turn:** Owner (manual pass)
 
 ---
 
@@ -1705,3 +1705,169 @@ SMOKE PASS. API stopped.
 **Decisions needed from the owner:** none for this integration. No push. The M3 Windows manual pass remains an open owner item.
 
 **Next turn:** MIRA Reviewer (Reviewer) and MIRA Security (Security reviewer), implementation review of M4.
+
+## 2026-11-18 00:44 MST | MIRA Security (pasted by MIRA Boss) | SECURITY REVIEW
+
+**Objective:** Security-review the M4 personas implementation on local `main` (`3558e9c` chunk 0, `936ae2b` A, `1d8ee37` B, `8c75ee0` C; diff `a2824ac..8c75ee0`) against my plan review (2026-11-17 23:43 MST), as MIRA Boss asked. I only read files and ran audits; I wrote no repo file. MIRA Boss pastes this entry.
+
+**Verdict: PASS. No Blocker or Major.** All five plan Minors and all three plan Nits are implemented and tested. There are two new Nits, plus one Minor in the toolchain that M4 didn't introduce.
+
+**Plan findings verified:**
+
+| Plan item | Status | Evidence |
+|---|---|---|
+| Minor 1: version IDOR | Fixed | Every version query joins `Personas` and filters on owner: `SqlitePersonaStore.cs:50-55` (list), `:77-80` (detail), `:128-131` (MAX+1), `:163-166` (revert), `:145-147` (prune). Writes use only `OwnerUserId = $owner`, never `IS NULL`. Test: `PersonaApiTests.cs:195` `CrossUserIdsAre404Everywhere` (versions, version/1, revert, PUT, DELETE, default). |
+| Minor 2: atomic two-id ownership | Fixed | `SetConversationPersonaAsync` checks the conversation owner (`:255`), then that the persona is readable (`:262`), then writes, all in one IMMEDIATE transaction. `SetDefaultAsync` does the same at `:218`. Foreign or unknown ids get 404 (`ConversationEndpoints.cs:90`, `PersonaEndpoints.cs:73-76`). Turn-time re-check: `ResolveForTurnAsync` uses the readable scope (`SqlitePersonaStore.cs:238-246`). Tests: `PersonaApiTests.cs:216-218`, `PersonaStoreTests.cs:300`. |
+| Minor 3: delete vs. FK | Fixed (owner's soft-pin variant) | In one transaction, the owner's default is reset to MIRA (`:188-196`), then the persona is deleted (`:198`). `Conversations.PersonaId` has no `REFERENCES` (`MiraDatabase.cs:122`), so a pin can't raise an FK error, and the pin is intentionally left in place. A pinned id that no longer exists resolves to built-in MIRA only. It can't reach another user's persona: the scope is the owner or the built-in, and ids come from `Guid.NewGuid()`. Status is just "active" or "deleted". Tests: `PRAGMA foreign_keys` = 1 (`PersonaStoreTests.cs:239`); delete the default (`:120`, `PersonaApiTests.cs:275`); dangling pin (`PersonaApiTests.cs:301`). |
+| Minor 4: prompt fencing | Fixed | `PersonaPrompt.Build` (`Personas.cs:372-381`) emits the governance preamble, then the open fence, the label, the body and the close fence. NUL and C0 are stripped before delimiters are neutralized (`:389`, `:403-404`), so the strip can't rebuild a fence. The prompt goes in `ChatRequest.Instructions` (`ChatEndpoints.cs:190`), and there's no system role in history. Tests: `PersonaContractTests.cs:151`, `:182` (governance decisions unchanged); `PersonaApiTests.cs:320`. |
+| Minor 5: cap/version races | Fixed | `WriteAsync` runs `BeginTransaction(deferred: false)`, which is `BEGIN IMMEDIATE` (`SqlitePersonaStore.cs:281`). The count check is at `:96-103` and MAX+1 inside the same transaction. A PK or UNIQUE clash maps to `PersonaConflictException` (`:286`) and then a fixed 409. Tests: `PersonaStoreTests.cs:322` (parallel saves), `:347` (concurrent creates), `PersonaApiTests.cs:183` (21st create gets 409). |
+| Nit 1: logging | Fixed | No new `ILogger` calls in the M4 diff. Pipeline events carry only `PersonaId` and `PersonaVersion` (`PipelineEvents.cs`, redactor allowlist; `ChatEndpoints.cs:144,157`). Test: `PersonaApiTests.cs:364`. |
+| Nit 2: version history | Fixed | Capped at 5: prune on save (`:145-147`), list `LIMIT $take` (`:55`). Test: `PersonaStoreTests.cs:72`. |
+| Nit 3: built-in id | Fixed | Fixed id `00000000-…-0001` (`Personas.cs:9`). PUT, DELETE and revert return 403 before the body is read (`PersonaEndpoints.cs:121,144,160`). `isBuiltIn` and `ownerUserId` are unknown keys and get 400. Tests: `PersonaApiTests.cs:105`, `:136`. |
+
+**Other checks:**
+- **CSRF and auth:** every new route sits under `/api`, which has `.RequireCsrfForUnsafeMethods()` (`MiraHost.cs:148`) and the fallback auth policy (`:112`). Test: `PersonaApiTests.cs:24`. The frontend sends `X-CSRF-TOKEN` on unsafe methods (`api.ts:391`).
+- **Input validation:** JSON content type, or a fixed 415. Malformed JSON gets a fixed 400 with no parser text. Keys are allowlisted, duplicates are rejected, and errors don't echo values. Length limits are 80/200/8000, backed by DB CHECKs. Tests: `PersonaApiTests.cs:154,165`.
+- **SQL:** all parameterized. The only interpolation is the constant scope and column fragments.
+- **Frontend:** persona data goes only through `textContent` or form `.value` (`personas.ts:94-342`). No `innerHTML` or `insertAdjacentHTML` in product code; the matches are test assertions only.
+- **Draft endpoint:** `PersonaEndpoints.cs:83-92` injects no store or logger and only returns the template. Test: `PersonaApiTests.cs:345`.
+- **Loopback:** unchanged (`LocalBindingPolicy.cs:40`, 127.0.0.1:5080).
+- **Dependencies:** M4 changes no `package.json`, lockfile or `.csproj`.
+
+**Findings:**
+- [Nit 1] **413 on persona routes.** The shared `PersonaEndpoints.ReadJsonAsync` (`PersonaEndpoints.cs:187-194`) catches only `JsonException`. An oversized body throws `BadHttpRequestException`, which shows the Development exception page instead of a fixed 413 problem. This covers the 5 persona body routes and `PUT /api/conversations/{id}/persona`. It widens the existing TODO "Global 413 / bad-request problem JSON" (REVIEW 2026-11-17 08:45 Nit 1). **Fix:** add `catch (BadHttpRequestException ex) when (ex.StatusCode == 413)` that returns a fixed 413 problem in `ReadJsonAsync`, as in `PreferenceEndpoints.cs:40-43`. Better, fix it globally per that TODO.
+- [Nit 2] **Fence hardening for a future real model.** `StripControls` (`Personas.cs:389`) keeps DEL and C1 (U+007F-U+009F) and bidi or zero-width format characters. `NeutralizeDelimiters` (`:403-404`) is ordinal and case-sensitive, so `<<<end_mira_user_persona>>>` passes through. This is harmless with the Mock, and the persona text only reaches its own author. **Fix:** before a real provider ships, also strip U+007F-U+009F and U+200B-U+200F/U+202A-U+202E/U+2066-U+2069, use `OrdinalIgnoreCase` for neutralization, and add test cases. Add this to `docs/TODO.md` (Implementer, cheap).
+- [Minor, pre-existing, not M4] **Frontend toolchain advisory.** `npm audit` reports 13 high (10 with `--omit=dev`), all from GHSA-fc5q-39xc-vjpf, a picomatch ReDoS. The path runs through astro@7.4.12, tinyglobby/fdir, anymatch and unstorage. This is build and dev tooling only. The glob patterns are developer-controlled, the shipped static output doesn't include picomatch, and M4 changed no dependency. The M3 audit was clean, so the advisory is new. **Fix:** don't run `npm audit fix --force`, which would downgrade astro to 5.3.0. Track it in `docs/TODO.md` (Implementer, cheap) and bump astro or add a picomatch `overrides` once a patched release exists, then re-audit.
+
+**Audits:** `dotnet list package --vulnerable --include-transitive`: no vulnerable packages in Mira.Api, Mira.Core, Mira.Infrastructure or Mira.Tests. `npm audit`: 13 high (picomatch, see above).
+
+**Commands:** `git diff a2824ac..8c75ee0`, read-only `sed`/`rg`, `npm audit`, `npm ls picomatch`, `dotnet list package --vulnerable --include-transitive`. I didn't re-run tests; MIRA Boss's gates are 293/293 and 64/64.
+
+**Security/privacy:** no secrets, persona text or user messages read or quoted.
+
+**Next turn:** MIRA Boss. No open Blocker or Major from MIRA Security, so M4 is clear from security. Carry Nit 1 into the existing 413 TODO, and add Nit 2 and the picomatch Minor to `docs/TODO.md`.
+
+## 2026-11-18 00:40 MST | MIRA Reviewer | REVIEW
+
+**Objective:** Review the M4 personas implementation on local `main` (5 commits on `origin/main` `2c6751b`: plan `9e41d2b`, chunk 0 `3558e9c`, A `936ae2b`, B `1d8ee37`, C `8c75ee0`; working tree clean). Checked against `docs/M4_PERSONAS.md` (the plan passed at `a2824ac`), the 00:39 IMPLEMENTATION entry, and my two 00:10 notes. The Turn line names MIRA Reviewer and MIRA Security, which is correct. Read-only: scratch work and the mutation run were in `/tmp` only. MIRA Security is reviewing in parallel.
+
+**Verdict:** PASS with 3 Minors. No Blocker or Major.
+
+### Plan conformance (verified)
+- **Migration 5** (`MiraDatabase.cs` migration 5): plain hand-written SQL; migrations 1–4 untouched.
+  - Name, description and body are versioned in `PersonaVersions`, with `CHECK`s for the 80/200/8,000 limits.
+  - `Conversations.PersonaId` is `NOT NULL DEFAULT` built-in and is backfilled. It is a soft pin with no `REFERENCES`.
+  - The built-in MIRA row and its v1 are seeded in the same migration. Tests check the seed text against `BuiltInPersona.Markdown` and that a second run is idempotent (`PersonaStoreTests.cs:233-245`).
+  - A v4 database with conversations upgrades with every pin set to MIRA (`:246`). Live: a temp database reports migration 5.
+- **Owner scoping and transactions** (`SqlitePersonaStore.cs`):
+  - Writes filter `OwnerUserId = $owner` only; reads add `IS NULL` for the built-in.
+  - Every write runs through `WriteAsync` → `BeginTransaction(deferred: false)`, which is `BEGIN IMMEDIATE`.
+  - Inside that transaction: ownership, the 20-persona cap count, `MAX+1` and the 5-version prune (`UpdateAsync`), and delete with default reset (`DeleteAsync`). My 00:10 note 1 is met.
+  - PK clashes become a fixed 409.
+  - `PUT /api/conversations/{id}/persona` checks both the conversation and the persona owner in one transaction.
+- **Built-in protection:** `PUT`, revert and `DELETE` return 403 before the body is read (`PersonaEndpoints.cs:121,144,160`). The `{id:guid}` constraint is on every id route, and the static `/default` and `/draft` routes are mapped first.
+- **Delete and turns:**
+  - Deleting the default returns 204 and resets the default to MIRA; pins are left alone.
+  - `ResolveForTurnAsync` falls back to MIRA without rewriting the stored pin, and the API reports `personaStatus: "deleted"`. My 00:10 note 2 is met; tests: `PersonaApiTests.cs:275,301`.
+  - `POST /api/conversations`, `GET /conversations/current` and get-or-create `chat/stream` all copy the current default (`ConversationEndpoints.cs`, `ChatEndpoints.cs`).
+- **Prompt:**
+  - `PersonaPrompt.Build` assembles the constant preamble, then the labeled fence, then the body.
+  - C0 and NUL are stripped (newline and tab kept) before delimiter neutralization.
+  - The persona goes through `ChatRequest.Instructions`; `ChatRole` has no `System` value. History is User/Assistant only.
+  - Tested with a body containing a fake closing delimiter (`PersonaApiTests.cs:320`).
+- **Privacy:**
+  - `PipelineEventData` gains only `PersonaId` and `PersonaVersion` (the redactor drops empty or ≤0 values).
+  - A test checks the name, description, body and draft markers are absent from logs, `/api/diagnostics` and stored events (`PersonaApiTests.cs:364`).
+  - The inspector resolves the name live, or shows `(deleted)` (`chat.ts:380-400`).
+  - `ownerUserId` is gone from responses.
+  - 400 titles are fixed or name the key, and never echo a value.
+- **Frontend:**
+  - No `innerHTML`, `insertAdjacentHTML` or `set:html` in `src`; the tests assert empty `innerHTML`.
+  - `<dialog>` is labelled, the inputs have `maxlength`, and the error uses `role="alert"`.
+  - Save, revert and delete go through `confirmAction` (`chat.ts:426,477,742`).
+- **TODO and constraints:** `docs/TODO.md` lists chunk A/C's deferrals in the agreed format. No new dependency; Mock only; no secrets. Smoke credentials were synthetic and the database was in `/tmp`.
+
+### Findings
+
+**Minor 1: the concurrency tests don't run concurrently, so they can't catch a lost `BEGIN IMMEDIATE`.** The tests are `PersonaStoreTests.cs:322` (`ParallelSavesGetDistinctVersionsOrAConflictNeverAnotherError`) and `:347` (`ConcurrentCreatesNeverExceedTheCap`). Microsoft.Data.Sqlite's async methods complete synchronously, so `Task.WhenAll(Range.Select(async …))` runs the calls one after another.
+- Mutation in a `/tmp` copy: `BeginTransaction(deferred: true)`. All 24 `PersonaStoreTests` still passed.
+- After wrapping each call in `Task.Run(...)`, the mutation fails twice (`SQLite Error 5: database is locked`), and the real code passes three times out of three.
+- Fix: run each call through `Task.Run` (or a barrier). The product code is correct.
+
+**Minor 2: an oversized body on persona routes returns the Development exception page.** `PersonaEndpoints.ReadJsonAsync` (`PersonaEndpoints.cs:180-195`) catches only `JsonException`. Live: a POST over 256 KB to `/api/personas` returns 413 with `title` = the exception type and `exception.details` = a full stack trace. The same helper serves `/default`, `/draft`, `PUT`, revert and `PUT /conversations/{id}/persona`.
+- Plan §6 says "413 already exists", but that is true only for preferences.
+- No persona data leaks: the trace is framework-only.
+- Fix: catch `BadHttpRequestException` with status 413 in `ReadJsonAsync`, like `PreferenceEndpoints.cs:40`. That is one change at the boundary. Otherwise, add these routes to the existing "Global 413" TODO.
+
+**Minor 3: `docs/M4_PERSONAS.md` wasn't updated at chunk C.** Chunk C owns the "as built" notes (§7, l.200), but the file was last changed in `3558e9c`. Its status line (l.3) still says "chunk 0 contracts landed. A and B may start". As-built choices the doc doesn't record:
+- 403 for built-in writes
+- 204 with no body for the two pin/default PUTs
+- `{ items }` list shapes
+- the `/versions/{n}` route
+- `SqlitePersonaStore` used directly for the conversation pin
+
+### Deferred items (for `docs/TODO.md`, only if not fixed in M4)
+- [ ] **Make persona concurrency tests concurrent** · MIRA Backend · REVIEW 2026-11-18 00:40 Minor 1 · cheap · `PersonaStoreTests.cs:322,347` run sequentially (sync-completing async SQLite), so a lost `BEGIN IMMEDIATE` goes unnoticed; use `Task.Run`.
+- Extend the existing **Global 413 / bad-request problem JSON** item with "persona routes via `PersonaEndpoints.ReadJsonAsync` (REVIEW 2026-11-18 00:40 Minor 2)".
+
+### Tests (Linux box, `8c75ee0`)
+```text
+dotnet build backend/Mira.sln -m:1 --no-incremental    0 warnings, 0 errors
+dotnet test --no-build -m:1  (twice)                  293/293, 293/293
+npm --prefix frontend test                            Vitest 64/64 (7 files)
+npm --prefix frontend run check                       0 errors / 0 warnings / 0 hints
+npm --prefix frontend run build                       1 page
+```
+**Live smoke:** temp DB, `127.0.0.1:5080`, synthetic alice and bob.
+- Cross-owner 404 for every route: GET, PUT, DELETE, versions, revert, default set to alice's persona, pinning bob's chat to alice's persona, pinning alice's chat.
+- Default → Jack: a new chat copies it.
+- DELETE of the default: 204, and the default becomes MIRA. The pinned chat shows `personaStatus: deleted`. The next turn is `MIRA mock (MIRA) …` and the stored pin is unchanged.
+- Delete of an in-use persona: before, `(Pinned)`; after, `deleted` and `(MIRA)`.
+- 6 saves → versions `[6,5,4,3,2]`, and v1 gives 404.
+- Built-in PUT/DELETE: 403.
+- Empty name: 400 with no echo.
+- `/personas/notaguid`: 404.
+- Diagnostics and all 9 `PipelineEvents` rows carry no name, description or body (`personaId` + `personaVersion` only). `api.log` has no persona text.
+- Oversized body: see Minor 2.
+
+### Security/privacy
+No new concerns beyond Minor 2. The checks I covered are listed under Plan conformance. I didn't repeat MIRA Security's threat-model items.
+
+### Decisions needed from the owner
+None. The open owner items are the M3 Windows manual pass and the M4 manual pass from plan §8 (Jack, default vs this-chat, revert, the inspector showing the name and not the body).
+
+**Next turn:** Owner. No Blocker or Major is open, so the M4 commits may be pushed once MIRA Security also passes and the owner gives push approval directly to the committing agent. The Minors can be fixed before the push or logged in `docs/TODO.md`.
+
+## 2026-11-18 00:49 MST | Grok (MIRA Boss, team lead) | RESOLUTION
+
+**Objective:** Close the M4 implementation reviews (MIRA Security 00:44 PASS, MIRA Reviewer 00:40 PASS; no Blocker or Major). Cheap findings are fixed in `fix(m4): review follow-ups`; deferred items are in `docs/TODO.md`. This entry is the finding-by-finding map. A DECISION follows. I did not push.
+
+**Findings:**
+
+- **MIRA Security Nit 1 / MIRA Reviewer Minor 2 (persona-route 413):** Fixed. `PersonaEndpoints.ReadJsonAsync` now catches `BadHttpRequestException` when the status is 413, same pattern as `PreferenceEndpoints`, and returns a fixed problem titled "The request body is too large." `OversizedBodyReturnsFixed413WithoutExceptionDetails` drives `ReadJsonAsync` with a body stream that throws that exception (the in-process test server does not enforce Kestrel's 256 KB limit) and asserts a 413 with that title and no exception details, stack, or exception type. `Mira.Api` grants `InternalsVisibleTo` `Mira.Tests` so the test can call the internal helper. Persona 413 is Done in `docs/TODO.md`. The global 413 item remains for other body-reading `/api` routes (annotated that preferences and persona routes are already fixed).
+
+- **MIRA Security Nit 2 (persona prompt fence hardening):** Deferred to `docs/TODO.md`, to be done before a real provider: also strip DEL and C1 (U+007F–U+009F) and bidi/zero-width format characters; neutralize delimiters with `OrdinalIgnoreCase`; add tests. Harmless with the Mock.
+
+- **MIRA Security Minor, pre-existing, not M4 (picomatch ReDoS GHSA-fc5q-39xc-vjpf via the Astro toolchain):** Recorded in `docs/TODO.md`. Build- and dev-time only. Bump astro or add a picomatch override once a patched release exists, then re-audit. Never run `npm audit fix --force`.
+
+- **MIRA Reviewer Minor 1 (concurrency tests were not concurrent):** Fixed, no TODO. `SqlitePersonaStoreTests.ParallelSavesGetDistinctVersionsOrAConflictNeverAnotherError` and `ConcurrentCreatesNeverExceedTheCap` now wrap each mutation in `Task.Run` and `Task.WhenAll`. Confirmed passing (initial run plus three more; also in the two full 294/294 suites).
+
+- **MIRA Reviewer Minor 3 (M4 plan not updated at chunk C):** Fixed. `docs/M4_PERSONAS.md` status is now implemented / reviews PASS / accepted for push pending the owner's Windows manual pass, and a new §11 As built records: built-in writes return 403; both persona PUTs return 204; lists are `{ items }`; GET `/versions/{n}`; the conversation pin uses the store directly; `ownerUserId` is dropped from responses; the draft always sends name and markdown; persona JSON routes return a fixed 413.
+
+- **Owner M4 Windows manual pass:** Added to `docs/TODO.md` under Owner. The M3 Windows manual pass stays open.
+
+**Deviations:** none from the owner's review-follow-up instructions, except this turn still does not push (the task said do not push). Security's entry is pasted under a "(pasted by MIRA Boss)" heading, with the body verbatim, and appears before Reviewer's 00:40 entry as instructed.
+
+**Security/privacy concerns:** none open from these reviews. Fence hardening and the picomatch advisory are tracked, not regressing M4.
+
+**Decisions needed from the owner:** the Windows manual pass (M4, and still M3). Push is recorded in the DECISION below but is not performed in this turn.
+
+**Next turn:** Owner (manual pass).
+
+## 2026-11-18 00:49 MST | Grok (MIRA Boss, team lead) | DECISION
+
+**Decision:** M4 (persona system) is accepted for push. This is made under the owner's direct instruction in chat at 2026-11-18 00:35 MST: "Please continue. Push as needed." MIRA Security (00:44) and MIRA Reviewer (00:40) both PASSed the implementation, with no open Blocker or Major. Cheap follow-ups are in this commit; remaining items are in `docs/TODO.md`.
+
+The owner's Windows manual pass is still owed and is now an open Owner item (create Jack, default vs this-chat, revert of name+body, deleted-persona status, inspector shows the live name and not the body, both themes; `docs/M4_PERSONAS.md` §8, §9). This turn prepares `git format-patch` only and does not push.
+
+**Next turn:** Owner (manual pass).
